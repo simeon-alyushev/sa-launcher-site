@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SA Launcher</title>
+<style>
+:root{--bg:#0f1115;--card:#181b22;--tx:#f2f4f8;--mu:#9aa3b2;--bd:#262b35;--ac:#4ade80;--acx:#06220f;--r:22px;--bl:0px;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root:not([data-theme="dark"]):not([data-theme="glass"]){--bg:#f4f6fa;--card:#fff;--tx:#14171d;--mu:#5d6676;--bd:#e2e6ee}
+:root[data-theme="light"]{--bg:#f4f6fa;--card:#fff;--tx:#14171d;--mu:#5d6676;--bd:#e2e6ee}
+:root[data-theme="glass"]{--bg:#0b0d14;--card:rgba(255,255,255,.08);--tx:#fff;--mu:#c3c9d6;--bd:rgba(255,255,255,.18);--bl:22px}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;transition:background .3s,color .3s}
+[data-theme="glass"] body{background:radial-gradient(600px 400px at 15% 10%,var(--ac),transparent 60%),radial-gradient(700px 500px at 90% 80%,#7c5cff,transparent 60%),#0b0d14}
+.wrap{max-width:1000px;margin:0 auto;padding:16px 20px}
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;color:var(--tx);text-decoration:none}
+.mono{width:40px;height:40px;border-radius:14px;background:var(--ac);color:var(--acx);display:grid;place-items:center;font-weight:900;font-size:16px}
+.card,.pill{background:var(--card);border:1px solid var(--bd);backdrop-filter:blur(var(--bl));-webkit-backdrop-filter:blur(var(--bl))}
+.card{border-radius:var(--r);padding:22px}
+.pill{border-radius:999px;padding:6px;display:flex;gap:4px;align-items:center}
+.pill button,.pill select{border:0;border-radius:999px;background:transparent;color:var(--tx);font:inherit;font-size:14px;padding:7px 14px;cursor:pointer}
+.pill button.on{background:var(--ac);color:var(--acx);font-weight:700}
+.pill select{background:transparent;padding:7px 10px}
+.pill select option{color:#000}
+.sw{width:22px;height:22px;border-radius:50%!important;padding:0!important;border:2px solid transparent!important}
+.sw.on{border-color:var(--tx)!important}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:999px;padding:14px 28px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.p{background:var(--ac);color:var(--acx)}
+.s{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+.hero{text-align:center;padding:64px 0 36px}
+.hero h1{font-size:clamp(34px,7vw,64px);line-height:1.05;margin:0 0 16px;letter-spacing:-.02em}
+.hero p{color:var(--mu);max-width:560px;margin:0 auto 28px;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:30px 0}
+.ic{width:44px;height:44px;border-radius:16px;background:var(--ac);color:var(--acx);display:grid;place-items:center;font-size:20px;margin-bottom:12px}
+.card h3{margin:0 0 6px;font-size:17px}.card p{margin:0;color:var(--mu);font-size:14px}
+.mock{border-radius:28px;padding:14px;margin:20px 0}
+.win{display:grid;grid-template-columns:70px 1fr;gap:12px;min-height:200px}
+.side{display:flex;flex-direction:column;gap:10px;align-items:center;padding:8px 0}
+.side i{width:40px;height:40px;border-radius:14px;background:var(--bd)}.side i:first-child{background:var(--ac)}
+.main{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.main i{border-radius:18px;background:var(--bd);min-height:80px}
+.dl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0 40px}
+.login{max-width:420px;margin:60px auto;text-align:center}
+.login h2{margin:0 0 20px}.login .btn{width:100%;margin-bottom:12px}
+.note{color:var(--mu);font-size:13px;margin-top:10px}
+footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
+.hide{display:none}.doc{max-width:720px;margin:40px auto}.doc h3{margin:22px 0 6px;font-size:17px}.doc p,.doc li{color:var(--mu)}.doc ul{padding-left:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="bar">
+  <a class="logo" href="#home"><span class="mono">SA</span>SA Launcher</a>
+  <div class="bar" style="gap:8px">
+   <div class="pill" id="themes"><button data-t="dark">●</button><button data-t="light">○</button><button data-t="glass">◐</button></div>
+   <div class="pill" id="accents"></div>
+   <div class="pill"><select id="lang"></select></div>
+   <a class="btn s" href="#catalog" style="padding:10px 22px">Catalog</a><a class="btn p" id="acc" href="#login" data-i="login" style="padding:10px 22px"></a>
+  </div>
+ </div>
+
+ <div id="home">
+  <section class="hero">
+   <h1 data-i="h1"></h1>
+   <p data-i="sub"></p>
+   <div class="dl"><a class="btn p" href="#" data-i="dl"></a><a class="btn s" href="#login" data-i="login"></a></div>
+  </section>
+  <div class="card mock"><div class="win"><div class="side"><i></i><i></i><i></i><i></i></div><div class="main"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+  <div class="grid">
+   <div class="card"><div class="ic">🔑</div><h3 data-i="t1"></h3><p data-i="d1"></p></div>
+   <div class="card"><div class="ic">📦</div><h3 data-i="t2"></h3><p data-i="d2"></p></div>
+   <div class="card"><div class="ic">⚡</div><h3 data-i="t3"></h3><p data-i="d3"></p></div>
+   <div class="card"><div class="ic">🧩</div><h3 data-i="t4"></h3><p data-i="d4"></p></div>
+  </div>
+  <div class="dl"><span class="pill"><button>Windows</button><button>macOS</button><button>Linux</button></span></div>
+ </div>
+
+ <div id="login" class="hide">
+  <div class="card login">
+   <div class="mono" style="margin:0 auto 14px;width:56px;height:56px;font-size:22px;border-radius:20px">SA</div>
+   <h2 data-i="lt"></h2>
+   <a class="btn s" href="/auth/microsoft/start"><b style="color:#00a4ef">■</b> <span data-i="ms"></span></a>
+   <a class="btn s" href="/auth/ely/start"><b style="color:var(--ac)">●</b> <span data-i="ey"></span></a>
+   <div class="note" id="msg" data-i="note"></div>
+  </div>
+ </div>
+ <div id="catalog" class="hide"><div class="card doc" style="max-width:860px"><h2>Catalog</h2>
+<div class="pill" style="flex-wrap:wrap;border-radius:22px"><input id="q" placeholder="Search…" style="flex:1;min-width:140px;border:0;background:transparent;color:var(--tx);font:inherit;padding:8px 12px">
+<select id="src"><option value="modrinth">Modrinth</option><option value="curseforge">CurseForge</option></select>
+<select id="typ"><option value="mod">Mods</option><option value="modpack">Modpacks</option><option value="resourcepack">Resource packs</option><option value="shader">Shaders</option></select>
+<select id="ldr"><option value="">Any loader</option><option>fabric</option><option>forge</option><option>neoforge</option><option>quilt</option></select>
+<input id="ver" placeholder="1.21.1" size="6" style="border:0;background:transparent;color:var(--tx);font:inherit;padding:8px 12px"><button id="go" class="on">Search</button></div>
+<div id="res" style="margin-top:14px;display:grid;gap:10px"></div></div></div>
+<div id="account" class="hide"><div class="card doc"><h2>Account <small id="cnt"></small></h2><ul id="list"></ul>
+<a class="btn s" href="/auth/microsoft/start" style="margin:4px">+ Microsoft</a><a class="btn s" href="/auth/ely/start" style="margin:4px">+ Ely.by</a><button class="btn s" id="out" style="margin:4px">Log out</button></div></div>
+<div id="about" class="hide"></div><div id="privacy" class="hide"></div>
+ <footer>© 2026 SA Launcher · Simeon Alyushev<br><a href="#about" style="color:inherit">About</a> · <a href="#privacy" style="color:inherit">Privacy</a><br><span style="font-size:12px">SA Launcher is not an official Minecraft product and is not approved by or associated with Mojang or Microsoft.</span></footer>
+</div>
+
+<script>
+const L={
+ru:{n:"Русский",login:"Войти",h1:"Лаунчер, который приятно открывать",sub:"Сборки как в Prism, каталог как в Modrinth, обновление и оптимизация в один клик.",dl:"Скачать",t1:"Microsoft и Ely.by",d1:"Только лицензия или Ely.by. Без паролей на нашей стороне.",t2:"Сборки",d2:"Свои версии, загрузчики и моды в отдельных профилях.",t3:"Обновить и оптимизировать",d3:"Лаунчер найдёт новую версию, где работают все моды.",t4:"Каталог модов",d4:"Моды, шейдеры и ресурспаки с установкой в один клик.",lt:"Вход в SA Launcher",ms:"Войти через Microsoft",ey:"Войти через Ely.by",note:"Пароль мы не видим и не храним."},
+pl:{n:"Polski",login:"Zaloguj",h1:"Launcher, który miło otworzyć",sub:"Instancje jak w Prism, katalog jak w Modrinth, aktualizacja i optymalizacja jednym kliknięciem.",dl:"Pobierz",t1:"Microsoft i Ely.by",d1:"Tylko licencja lub Ely.by. Bez haseł po naszej stronie.",t2:"Instancje",d2:"Własne wersje, loadery i mody w osobnych profilach.",t3:"Aktualizuj i optymalizuj",d3:"Launcher znajdzie wersję, na której działają wszystkie mody.",t4:"Katalog modów",d4:"Mody, shadery i paczki zasobów jednym kliknięciem.",lt:"Logowanie do SA Launcher",ms:"Zaloguj przez Microsoft",ey:"Zaloguj przez Ely.by",note:"Nie widzimy ani nie przechowujemy hasła."},
+uk:{n:"Українська",login:"Увійти",h1:"Лаунчер, який приємно відкривати",sub:"Збірки як у Prism, каталог як у Modrinth, оновлення й оптимізація одним кліком.",dl:"Завантажити",t1:"Microsoft та Ely.by",d1:"Лише ліцензія або Ely.by. Без паролів на нашому боці.",t2:"Збірки",d2:"Власні версії, завантажувачі та моди в окремих профілях.",t3:"Оновити й оптимізувати",d3:"Лаунчер знайде версію, де працюють усі моди.",t4:"Каталог модів",d4:"Моди, шейдери та ресурспаки в один клік.",lt:"Вхід до SA Launcher",ms:"Увійти через Microsoft",ey:"Увійти через Ely.by",note:"Пароль ми не бачимо й не зберігаємо."},
+en:{n:"English",login:"Sign in",h1:"A launcher that’s a joy to open",sub:"Prism-style instances, a Modrinth-style catalog, one-click update and optimize.",dl:"Download",t1:"Microsoft & Ely.by",d1:"License or Ely.by only. No passwords on our side.",t2:"Instances",d2:"Your own versions, loaders and mods in separate profiles.",t3:"Update & optimize",d3:"The launcher finds a newer version where all your mods work.",t4:"Mod catalog",d4:"Mods, shaders and resource packs in one click.",lt:"Sign in to SA Launcher",ms:"Sign in with Microsoft",ey:"Sign in with Ely.by",note:"We never see or store your password."},
+de:{n:"Deutsch",login:"Anmelden",h1:"Ein Launcher, den man gern öffnet",sub:"Instanzen wie in Prism, Katalog wie Modrinth, Update und Optimierung per Klick.",dl:"Herunterladen",t1:"Microsoft & Ely.by",d1:"Nur Lizenz oder Ely.by. Keine Passwörter bei uns.",t2:"Instanzen",d2:"Eigene Versionen, Loader und Mods in separaten Profilen.",t3:"Aktualisieren & optimieren",d3:"Der Launcher findet eine neuere Version, auf der alle Mods laufen.",t4:"Mod-Katalog",d4:"Mods, Shader und Ressourcenpakete mit einem Klick.",lt:"Bei SA Launcher anmelden",ms:"Mit Microsoft anmelden",ey:"Mit Ely.by anmelden",note:"Dein Passwort sehen oder speichern wir nie."},
+fr:{n:"Français",login:"Connexion",h1:"Un launcher agréable à ouvrir",sub:"Instances façon Prism, catalogue façon Modrinth, mise à jour et optimisation en un clic.",dl:"Télécharger",t1:"Microsoft et Ely.by",d1:"Licence ou Ely.by uniquement. Aucun mot de passe chez nous.",t2:"Instances",d2:"Vos versions, loaders et mods dans des profils séparés.",t3:"Mettre à jour et optimiser",d3:"Le launcher trouve une version récente compatible avec tous vos mods.",t4:"Catalogue de mods",d4:"Mods, shaders et packs de ressources en un clic.",lt:"Connexion à SA Launcher",ms:"Se connecter avec Microsoft",ey:"Se connecter avec Ely.by",note:"Nous ne voyons ni ne stockons votre mot de passe."},
+es:{n:"Español",login:"Iniciar sesión",h1:"Un launcher que da gusto abrir",sub:"Instancias como en Prism, catálogo como Modrinth, actualiza y optimiza con un clic.",dl:"Descargar",t1:"Microsoft y Ely.by",d1:"Solo licencia o Ely.by. Sin contraseñas de nuestro lado.",t2:"Instancias",d2:"Tus versiones, loaders y mods en perfiles separados.",t3:"Actualizar y optimizar",d3:"El launcher busca una versión nueva donde funcionen todos tus mods.",t4:"Catálogo de mods",d4:"Mods, shaders y paquetes de recursos con un clic.",lt:"Inicia sesión en SA Launcher",ms:"Entrar con Microsoft",ey:"Entrar con Ely.by",note:"Nunca vemos ni guardamos tu contraseña."},
+pt:{n:"Português",login:"Entrar",h1:"Um launcher gostoso de abrir",sub:"Instâncias como no Prism, catálogo como o Modrinth, atualizar e otimizar com um clique.",dl:"Baixar",t1:"Microsoft e Ely.by",d1:"Apenas licença ou Ely.by. Sem senhas do nosso lado.",t2:"Instâncias",d2:"Suas versões, loaders e mods em perfis separados.",t3:"Atualizar e otimizar",d3:"O launcher encontra uma versão nova em que todos os mods funcionam.",t4:"Catálogo de mods",d4:"Mods, shaders e pacotes de recursos com um clique.",lt:"Entrar no SA Launcher",ms:"Entrar com Microsoft",ey:"Entrar com Ely.by",note:"Nunca vemos nem guardamos sua senha."},
+it:{n:"Italiano",login:"Accedi",h1:"Un launcher che è un piacere aprire",sub:"Istanze come Prism, catalogo come Modrinth, aggiorna e ottimizza con un clic.",dl:"Scarica",t1:"Microsoft ed Ely.by",d1:"Solo licenza o Ely.by. Nessuna password da parte nostra.",t2:"Istanze",d2:"Le tue versioni, loader e mod in profili separati.",t3:"Aggiorna e ottimizza",d3:"Il launcher trova una versione nuova dove funzionano tutte le mod.",t4:"Catalogo mod",d4:"Mod, shader e resource pack con un clic.",lt:"Accedi a SA Launcher",ms:"Accedi con Microsoft",ey:"Accedi con Ely.by",note:"Non vediamo né conserviamo la tua password."},
+tr:{n:"Türkçe",login:"Giriş yap",h1:"Açması keyifli bir launcher",sub:"Prism tarzı profiller, Modrinth tarzı katalog, tek tıkla güncelleme ve optimizasyon.",dl:"İndir",t1:"Microsoft ve Ely.by",d1:"Yalnızca lisans veya Ely.by. Bizde şifre yok.",t2:"Profiller",d2:"Kendi sürümleriniz, yükleyicileriniz ve modlarınız ayrı profillerde.",t3:"Güncelle ve optimize et",d3:"Launcher tüm modların çalıştığı yeni bir sürüm bulur.",t4:"Mod kataloğu",d4:"Mod, shader ve kaynak paketleri tek tıkla.",lt:"SA Launcher’a giriş",ms:"Microsoft ile giriş",ey:"Ely.by ile giriş",note:"Şifrenizi görmeyiz ve saklamayız."},
+nl:{n:"Nederlands",login:"Inloggen",h1:"Een launcher die fijn is om te openen",sub:"Instanties zoals in Prism, catalogus zoals Modrinth, updaten en optimaliseren met één klik.",dl:"Downloaden",t1:"Microsoft en Ely.by",d1:"Alleen licentie of Ely.by. Geen wachtwoorden aan onze kant.",t2:"Instanties",d2:"Eigen versies, loaders en mods in aparte profielen.",t3:"Updaten en optimaliseren",d3:"De launcher vindt een nieuwere versie waarop al je mods werken.",t4:"Modcatalogus",d4:"Mods, shaders en resourcepacks met één klik.",lt:"Inloggen bij SA Launcher",ms:"Inloggen met Microsoft",ey:"Inloggen met Ely.by",note:"We zien je wachtwoord nooit en slaan het niet op."},
+sv:{n:"Svenska",login:"Logga in",h1:"En launcher som är skön att öppna",sub:"Instanser som i Prism, katalog som Modrinth, uppdatera och optimera med ett klick.",dl:"Ladda ner",t1:"Microsoft och Ely.by",d1:"Bara licens eller Ely.by. Inga lösenord hos oss.",t2:"Instanser",d2:"Egna versioner, laddare och mods i separata profiler.",t3:"Uppdatera och optimera",d3:"Launchern hittar en nyare version där alla dina mods fungerar.",t4:"Modkatalog",d4:"Mods, shaders och resursspaket med ett klick.",lt:"Logga in på SA Launcher",ms:"Logga in med Microsoft",ey:"Logga in med Ely.by",note:"Vi ser eller sparar aldrig ditt lösenord."},
+cs:{n:"Čeština",login:"Přihlásit",h1:"Launcher, který je radost otevřít",sub:"Instance jako v Prism, katalog jako Modrinth, aktualizace a optimalizace jedním klikem.",dl:"Stáhnout",t1:"Microsoft a Ely.by",d1:"Pouze licence nebo Ely.by. U nás žádná hesla.",t2:"Instance",d2:"Vlastní verze, loadery a módy v oddělených profilech.",t3:"Aktualizovat a optimalizovat",d3:"Launcher najde novější verzi, na které fungují všechny módy.",t4:"Katalog módů",d4:"Módy, shadery a balíčky zdrojů jedním klikem.",lt:"Přihlášení do SA Launcher",ms:"Přihlásit přes Microsoft",ey:"Přihlásit přes Ely.by",note:"Vaše heslo nikdy nevidíme ani neukládáme."},
+hu:{n:"Magyar",login:"Belépés",h1:"Egy launcher, amit öröm megnyitni",sub:"Példányok mint a Prismben, katalógus mint a Modrinthen, frissítés és optimalizálás egy kattintással.",dl:"Letöltés",t1:"Microsoft és Ely.by",d1:"Csak licenc vagy Ely.by. Nálunk nincsenek jelszavak.",t2:"Példányok",d2:"Saját verziók, betöltők és modok külön profilokban.",t3:"Frissítés és optimalizálás",d3:"A launcher talál újabb verziót, amelyen minden mod működik.",t4:"Modkatalógus",d4:"Modok, shaderek és erőforráscsomagok egy kattintással.",lt:"Belépés az SA Launcherbe",ms:"Belépés Microsofttal",ey:"Belépés Ely.by-jal",note:"A jelszavadat soha nem látjuk és nem tároljuk."},
+ro:{n:"Română",login:"Autentificare",h1:"Un launcher plăcut de deschis",sub:"Instanțe ca în Prism, catalog ca Modrinth, actualizare și optimizare cu un clic.",dl:"Descarcă",t1:"Microsoft și Ely.by",d1:"Doar licență sau Ely.by. Fără parole la noi.",t2:"Instanțe",d2:"Versiuni, loadere și moduri proprii în profiluri separate.",t3:"Actualizează și optimizează",d3:"Launcherul găsește o versiune nouă pe care funcționează toate modurile.",t4:"Catalog de moduri",d4:"Moduri, shadere și pachete de resurse cu un clic.",lt:"Autentificare în SA Launcher",ms:"Autentificare cu Microsoft",ey:"Autentificare cu Ely.by",note:"Nu îți vedem și nu îți stocăm parola."},
+ja:{n:"日本語",login:"ログイン",h1:"開くのが楽しいランチャー",sub:"Prism風のインスタンス、Modrinth風のカタログ、ワンクリックで更新と最適化。",dl:"ダウンロード",t1:"MicrosoftとEly.by",d1:"ライセンスまたはEly.byのみ。パスワードは扱いません。",t2:"インスタンス",d2:"独自のバージョン、ローダー、MODを別々のプロファイルで管理。",t3:"更新と最適化",d3:"すべてのMODが動く新しいバージョンを探します。",t4:"MODカタログ",d4:"MOD、シェーダー、リソースパックをワンクリックで。",lt:"SA Launcherにログイン",ms:"Microsoftでログイン",ey:"Ely.byでログイン",note:"パスワードは見ることも保存することもありません。"},
+ko:{n:"한국어",login:"로그인",h1:"열어보고 싶은 런처",sub:"Prism 스타일 인스턴스, Modrinth 스타일 카탈로그, 한 번의 클릭으로 업데이트와 최적화.",dl:"다운로드",t1:"Microsoft 및 Ely.by",d1:"라이선스 또는 Ely.by만 지원합니다. 비밀번호는 저장하지 않습니다.",t2:"인스턴스",d2:"나만의 버전, 로더, 모드를 별도 프로필로 관리하세요.",t3:"업데이트 및 최적화",d3:"모든 모드가 작동하는 최신 버전을 찾아 줍니다.",t4:"모드 카탈로그",d4:"모드, 셰이더, 리소스 팩을 한 번에 설치하세요.",lt:"SA Launcher 로그인",ms:"Microsoft로 로그인",ey:"Ely.by로 로그인",note:"비밀번호를 보거나 저장하지 않습니다."},
+zh:{n:"简体中文",login:"登录",h1:"一个让人愿意打开的启动器",sub:"Prism 风格的实例，Modrinth 风格的目录，一键更新与优化。",dl:"下载",t1:"Microsoft 与 Ely.by",d1:"仅支持正版或 Ely.by，我们不保存密码。",t2:"实例",d2:"自定义版本、加载器和模组，各用独立配置。",t3:"更新与优化",d3:"启动器会找到所有模组都能运行的新版本。",t4:"模组目录",d4:"一键安装模组、光影和资源包。",lt:"登录 SA Launcher",ms:"使用 Microsoft 登录",ey:"使用 Ely.by 登录",note:"我们不会查看或保存你的密码。"},
+"zh-TW":{n:"繁體中文",login:"登入",h1:"一個讓人願意打開的啟動器",sub:"Prism 風格的實例，Modrinth 風格的目錄，一鍵更新與最佳化。",dl:"下載",t1:"Microsoft 與 Ely.by",d1:"僅支援正版或 Ely.by，我們不儲存密碼。",t2:"實例",d2:"自訂版本、載入器和模組，各用獨立設定檔。",t3:"更新與最佳化",d3:"啟動器會找出所有模組都能運作的新版本。",t4:"模組目錄",d4:"一鍵安裝模組、光影和資源包。",lt:"登入 SA Launcher",ms:"使用 Microsoft 登入",ey:"使用 Ely.by 登入",note:"我們不會查看或儲存你的密碼。"},
+vi:{n:"Tiếng Việt",login:"Đăng nhập",h1:"Một launcher đáng để mở",sub:"Phiên bản kiểu Prism, danh mục kiểu Modrinth, cập nhật và tối ưu chỉ một cú nhấp.",dl:"Tải xuống",t1:"Microsoft và Ely.by",d1:"Chỉ bản quyền hoặc Ely.by. Chúng tôi không giữ mật khẩu.",t2:"Hồ sơ game",d2:"Phiên bản, trình nạp và mod riêng trong từng hồ sơ.",t3:"Cập nhật và tối ưu",d3:"Launcher tìm phiên bản mới mà mọi mod đều chạy được.",t4:"Danh mục mod",d4:"Mod, shader và gói tài nguyên chỉ một cú nhấp.",lt:"Đăng nhập SA Launcher",ms:"Đăng nhập bằng Microsoft",ey:"Đăng nhập bằng Ely.by",note:"Chúng tôi không xem hay lưu mật khẩu của bạn."}
+};
+const AC=["#4ade80","#60a5fa","#a78bfa","#f472b6","#fb923c","#facc15"];
+const $=s=>document.querySelector(s),root=document.documentElement;
+const st={t:"dark",a:AC[0],l:"ru"};
+function ld(){try{Object.assign(st,JSON.parse(localStorage.getItem("sa")||"{}"))}catch(e){}}
+function sv(){try{localStorage.setItem("sa",JSON.stringify(st))}catch(e){}}
+function ap(){
+ root.dataset.theme=st.t;root.style.setProperty("--ac",st.a);root.lang=st.l;
+ const x=parseInt(st.a.slice(1),16),lum=((x>>16)*.3+((x>>8)&255)*.59+(x&255)*.11);
+ root.style.setProperty("--acx",lum>140?"#10131a":"#fff");
+ document.querySelectorAll("#themes button").forEach(b=>b.classList.toggle("on",b.dataset.t===st.t));
+ document.querySelectorAll("#accents button").forEach(b=>b.classList.toggle("on",b.dataset.c===st.a));
+ const d=L[st.l]||L.en;
+ document.querySelectorAll("[data-i]").forEach(e=>e.textContent=d[e.dataset.i]);
+ $("#lang").value=st.l;docs();
+}
+function demo(){const d=L[st.l];$("#msg").textContent="Demo: "+(d?d.note:"")}
+const MAIL="simeon.alyushev@gmail.com";
+const D={
+en:{a:`<div class='card doc'><h2>About SA Launcher</h2><p>SA Launcher is an independent launcher for Minecraft: Java Edition, made by Simeon Alyushev (Poland). It is not an official Minecraft product and is not approved by or associated with Mojang or Microsoft.</p><h3>What it does</h3><ul><li>Downloads game files directly from Mojang’s official servers and never redistributes them.</li><li>Signs in licensed players with Microsoft and checks that the account owns Java Edition.</li><li>Offers Ely.by as a separate, clearly marked option for players without a license.</li><li>Manages instances and installs mods, shaders and packs from Modrinth.</li><li>Keeps Minecraft access tokens only on the player’s own device.</li></ul><h3>Microsoft permissions</h3><p>Only XboxLive.signin and offline_access, used solely to sign the player in and load their Minecraft profile.</p><h3>Contact</h3><p>${MAIL}</p></div>`,
+p:`<div class='card doc'><h2>Privacy Policy</h2><p>Controller: Simeon Alyushev, Poland. Contact: ${MAIL}.</p><h3>Data we store</h3><ul><li>Your Microsoft or Ely.by account ID and display name.</li><li>Your settings (theme, accent colour, language) and the list of your cloud instances.</li></ul><h3>Data we never store</h3><ul><li>Passwords: sign-in happens on Microsoft’s or Ely.by’s own pages.</li><li>Minecraft, Xbox and XSTS tokens: they stay on your device.</li></ul><h3>Why</h3><p>To identify your SA profile and sync your settings and instances between devices.</p><h3>Third parties</h3><p>Microsoft and Ely.by (sign-in) and Modrinth (mod catalog) process data under their own policies. We use no advertising or tracking.</p><h3>Your rights</h3><p>You can access, correct or delete your data and your SA account at any time (GDPR). Write to ${MAIL}.</p></div>`},
+ru:{a:`<div class='card doc'><h2>О SA Launcher</h2><p>SA Launcher — независимый лаунчер для Minecraft: Java Edition, создан Simeon Alyushev (Польша). Это не официальный продукт Minecraft, он не одобрен Mojang или Microsoft и не связан с ними.</p><h3>Что он делает</h3><ul><li>Скачивает файлы игры напрямую с официальных серверов Mojang и никогда не распространяет их сам.</li><li>Выполняет вход лицензионных игроков через Microsoft и проверяет наличие Java Edition.</li><li>Предлагает Ely.by как отдельный, явно обозначенный вариант для игроков без лицензии.</li><li>Управляет сборками и ставит моды, шейдеры и паки с Modrinth.</li><li>Хранит токены Minecraft только на устройстве игрока.</li></ul><h3>Права Microsoft</h3><p>Только XboxLive.signin и offline_access, исключительно для входа и загрузки профиля Minecraft.</p><h3>Контакты</h3><p>${MAIL}</p></div>`,
+p:`<div class='card doc'><h2>Политика конфиденциальности</h2><p>Оператор данных: Simeon Alyushev, Польша. Контакт: ${MAIL}.</p><h3>Что мы храним</h3><ul><li>Идентификатор и отображаемое имя аккаунта Microsoft или Ely.by.</li><li>Настройки (тема, акцентный цвет, язык) и список ваших облачных сборок.</li></ul><h3>Что мы не храним</h3><ul><li>Пароли: вход происходит на страницах Microsoft или Ely.by.</li><li>Токены Minecraft, Xbox и XSTS: они остаются на вашем устройстве.</li></ul><h3>Зачем</h3><p>Чтобы определить ваш SA-профиль и синхронизировать настройки и сборки между устройствами.</p><h3>Третьи стороны</h3><p>Microsoft и Ely.by (вход) и Modrinth (каталог модов) обрабатывают данные по своим правилам. Мы не используем рекламу и слежку.</p><h3>Ваши права</h3><p>Вы можете в любой момент получить, исправить или удалить свои данные и аккаунт SA (GDPR). Пишите на ${MAIL}.</p></div>`},
+pl:{a:`<div class='card doc'><h2>O SA Launcher</h2><p>SA Launcher to niezależny launcher do Minecraft: Java Edition, stworzony przez Simeona Alyusheva (Polska). Nie jest oficjalnym produktem Minecraft ani nie jest zatwierdzony przez Mojang lub Microsoft, ani z nimi powiązany.</p><h3>Co robi</h3><ul><li>Pobiera pliki gry bezpośrednio z oficjalnych serwerów Mojang i nigdy ich nie rozpowszechnia.</li><li>Loguje graczy z licencją przez Microsoft i sprawdza posiadanie Java Edition.</li><li>Oferuje Ely.by jako osobną, wyraźnie oznaczoną opcję dla graczy bez licencji.</li><li>Zarządza instancjami i instaluje mody, shadery i paczki z Modrinth.</li><li>Przechowuje tokeny Minecraft wyłącznie na urządzeniu gracza.</li></ul><h3>Uprawnienia Microsoft</h3><p>Tylko XboxLive.signin i offline_access, wyłącznie do logowania i wczytania profilu Minecraft.</p><h3>Kontakt</h3><p>${MAIL}</p></div>`,
+p:`<div class='card doc'><h2>Polityka prywatności</h2><p>Administrator danych: Simeon Alyushev, Polska. Kontakt: ${MAIL}.</p><h3>Co przechowujemy</h3><ul><li>Identyfikator i nazwę wyświetlaną konta Microsoft lub Ely.by.</li><li>Ustawienia (motyw, kolor akcentu, język) oraz listę Twoich instancji w chmurze.</li></ul><h3>Czego nie przechowujemy</h3><ul><li>Haseł: logowanie odbywa się na stronach Microsoft lub Ely.by.</li><li>Tokenów Minecraft, Xbox i XSTS: pozostają na Twoim urządzeniu.</li></ul><h3>Cel</h3><p>Identyfikacja profilu SA oraz synchronizacja ustawień i instancji między urządzeniami.</p><h3>Podmioty trzecie</h3><p>Microsoft i Ely.by (logowanie) oraz Modrinth (katalog modów) przetwarzają dane według własnych zasad. Nie używamy reklam ani śledzenia.</p><h3>Twoje prawa</h3><p>W każdej chwili możesz uzyskać dostęp do danych, poprawić je lub usunąć wraz z kontem SA (RODO). Napisz na ${MAIL}.</p></div>`}
+};
+function docs(){const d=D[st.l]||D.en;$("#about").innerHTML=d.a;$("#privacy").innerHTML=d.p}
+const V=["login","about","privacy","catalog","account"];
+function route(){const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home",...V].forEach(x=>$("#"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
+ld();
+$("#lang").innerHTML=Object.keys(L).map(k=>`<option value="${k}">${L[k].n}</option>`).join("");
+$("#accents").innerHTML=AC.map(c=>`<button class="sw" data-c="${c}" style="background:${c}"></button>`).join("");
+$("#themes").onclick=e=>{if(e.target.dataset.t){st.t=e.target.dataset.t;sv();ap()}};
+$("#accents").onclick=e=>{if(e.target.dataset.c){st.a=e.target.dataset.c;sv();ap()}};
+$("#lang").onchange=e=>{st.l=e.target.value;sv();ap()};
+addEventListener("hashchange",route);ap();route();
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function me(){try{const a=(await(await fetch("/api/me")).json()).accounts||[],b=$("#acc");
+if(a.length){b.removeAttribute("data-i");b.textContent=a[0].name+(a.length>1?" +"+(a.length-1):"");b.href="#account"}
+$("#list").innerHTML=a.map(x=>"<li>"+(x.p==="ely"?"Ely.by":"Microsoft")+": "+esc(x.name)+"</li>").join("")||"<li>—</li>";$("#cnt").textContent=a.length+"/10"}catch(e){}}
+async function go(){const p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:$("#typ").value,loader:$("#ldr").value,version:$("#ver").value});$("#res").textContent="…";
+try{const r=await fetch("/api/search?"+p),d=await r.json();if(!r.ok){$("#res").textContent=d.error||"Error";return}
+$("#res").innerHTML=d.results.map(x=>'<a class="card" style="display:flex;gap:12px;color:inherit;text-decoration:none;padding:14px" href="'+esc(x.url)+'" target="_blank" rel="noopener"><img src="'+esc(x.icon||"")+'" alt="" width="48" height="48" style="border-radius:12px"><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>⬇ "+Number(x.downloads||0).toLocaleString()+"</small></div></a>").join("")||"—"}catch(e){$("#res").textContent="Error"}}
+$("#go").onclick=go;$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
+$("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST"});location.href="/#home";location.reload()};
+me();
+</script>
+</body>
+</html>
