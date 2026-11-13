@@ -66,9 +66,35 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 .off{opacity:.45;filter:grayscale(1)}.vr.off .btn{pointer-events:none;background:var(--bd);color:var(--mu)}
 .sec{margin:34px 0 6px;font-size:22px}.sel{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 .vr{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)}
+
+:root[data-theme="cold"]{--bg:#0a1626;--card:rgba(20,38,64,.8);--tx:#eaf4ff;--mu:#9fb6d3;--bd:#27456b}
+:root[data-theme="warm"]{--bg:#fff3dc;--card:rgba(255,252,244,.86);--tx:#3a2410;--mu:#8a6a48;--bd:#f0d9ae}
+:root[data-theme="autumn"]{--bg:#1d120b;--card:rgba(48,29,17,.82);--tx:#fbeee0;--mu:#c3a283;--bd:#4d3220}
+:root[data-theme="spring"]{--bg:#0b1a1c;--card:rgba(18,42,44,.82);--tx:#e9fbf6;--mu:#93bdb5;--bd:#245054}
+[data-theme="cold"] body{background:linear-gradient(#0a1626,#143058) fixed}
+[data-theme="warm"] body{background:linear-gradient(#fff3dc,#ffe0a8) fixed}
+[data-theme="autumn"] body{background:linear-gradient(#1d120b,#3a2010) fixed}
+[data-theme="spring"] body{background:linear-gradient(#0b1a1c,#123a40) fixed}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1}
+#hue{-webkit-appearance:none;appearance:none;width:200px;height:10px;border-radius:99px;margin:0 8px;background:linear-gradient(90deg,hsl(0 85% 58%),hsl(60 85% 58%),hsl(120 85% 58%),hsl(180 85% 58%),hsl(240 85% 58%),hsl(300 85% 58%),hsl(360 85% 58%))}
+#hue::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
+#hue::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
+.dock{position:fixed;right:18px;top:110px;width:250px;display:none;flex-direction:column;gap:12px;z-index:2;max-height:calc(100vh - 130px);overflow:auto;padding:4px;scrollbar-width:none}
+@media(min-width:1560px){.dock.on{display:flex}}
+.dk{padding:12px;cursor:pointer;animation:drop .9s cubic-bezier(.3,1.4,.5,1) both;transition:transform .2s}
+.dk:hover{transform:translateY(-3px) scale(1.02)}
+.dk .t{font-size:11px;color:var(--ac);font-weight:800;text-transform:uppercase;margin-bottom:6px}
+.dk .row{display:flex;gap:10px;align-items:center}.dk .mi{width:44px;height:44px;border-radius:12px}
+.dk p{margin:8px 0;font-size:13px;color:var(--mu);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dk .btn{width:100%;padding:7px 14px;font-size:13px}
+@keyframes drop{from{transform:translateY(-140px) rotate(-5deg);opacity:0}to{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){.dk{animation:none}}
 </style>
 </head>
 <body>
+<canvas id="fx"></canvas>
+<aside class="dock" id="dock"></aside>
 <div class="wrap">
  <div class="bar">
   <a class="logo" href="#home"><span class="mono">SA</span>SA Launcher</a>
@@ -79,6 +105,8 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
    <a class="btn s" href="#catalog" style="padding:10px 22px">Catalog</a><a class="btn p" id="acc" href="#login" data-i="login" style="padding:10px 22px"></a>
   </div>
  </div>
+
+ <div class="pill" style="width:fit-content;margin:10px 0 0 auto"><span id="ownl" style="font-size:13px;padding:0 8px"></span><input type="range" id="hue" min="0" max="360" value="0"></div>
 
  <div id="home">
   <section class="hero">
@@ -142,12 +170,40 @@ zh:{n:"简体中文",login:"登录",h1:"一个让人愿意打开的启动器",su
 "zh-TW":{n:"繁體中文",login:"登入",h1:"一個讓人願意打開的啟動器",sub:"Prism 風格的實例，Modrinth 風格的目錄，一鍵更新與最佳化。",dl:"下載",t1:"Microsoft 與 Ely.by",d1:"僅支援正版或 Ely.by，我們不儲存密碼。",t2:"實例",d2:"自訂版本、載入器和模組，各用獨立設定檔。",t3:"更新與最佳化",d3:"啟動器會找出所有模組都能運作的新版本。",t4:"模組目錄",d4:"一鍵安裝模組、光影和資源包。",lt:"登入 SA Launcher",ms:"使用 Microsoft 登入",ey:"使用 Ely.by 登入",note:"我們不會查看或儲存你的密碼。"},
 vi:{n:"Tiếng Việt",login:"Đăng nhập",h1:"Một launcher đáng để mở",sub:"Phiên bản kiểu Prism, danh mục kiểu Modrinth, cập nhật và tối ưu chỉ một cú nhấp.",dl:"Tải xuống",t1:"Microsoft và Ely.by",d1:"Chỉ bản quyền hoặc Ely.by. Chúng tôi không giữ mật khẩu.",t2:"Hồ sơ game",d2:"Phiên bản, trình nạp và mod riêng trong từng hồ sơ.",t3:"Cập nhật và tối ưu",d3:"Launcher tìm phiên bản mới mà mọi mod đều chạy được.",t4:"Danh mục mod",d4:"Mod, shader và gói tài nguyên chỉ một cú nhấp.",lt:"Đăng nhập SA Launcher",ms:"Đăng nhập bằng Microsoft",ey:"Đăng nhập bằng Ely.by",note:"Chúng tôi không xem hay lưu mật khẩu của bạn."}
 };
-const AC=["#4ade80","#60a5fa","#a78bfa","#f472b6","#fb923c","#facc15","#22d3ee","#f87171","#e879f9","#a3e635"];
-const TH=[["dark","#0f1115"],["light","#f4f6fa"],["glass","linear-gradient(135deg,#4ade80,#7c5cff)"],["amoled","#000"],["midnight","#0a1020"],["forest","#0d1410"],["sand","#f6f1e7"]];
+const AC=["#1bd96a","#4f8cff","#f87171","#a78bfa","#f472b6","#fb923c","#facc15","#22d3ee","#e879f9","#a3e635"],BN={"#1bd96a":"Modrinth","#4f8cff":"Prism","#f87171":"SA Launcher"};
+const TH0=[["dark","#0f1115"],["light","#f4f6fa"],["glass","linear-gradient(135deg,#4ade80,#7c5cff)"],["amoled","#000"],["midnight","#0a1020"],["forest","#0d1410"],["sand","#f6f1e7"]];
+const TH=[["dark","#0f1115"],["light","#f4f6fa"],["amoled","#000"],["cold","linear-gradient(135deg,#0a1626,#7cc4ff)"],["warm","linear-gradient(135deg,#fff3dc,#ffb347)"],["autumn","linear-gradient(135deg,#1d120b,#e8742c)"],["spring","linear-gradient(135deg,#0b1a1c,#5ec8d8)"]];
 const $=s=>document.querySelector(s),root=document.documentElement;
-const st={t:"dark",a:AC[0],l:"ru"};
+const OSN={windows:"Windows",macos:"macOS",linux:"Linux"};
+const st={t:"dark",a:"#f87171",l:"ru",o:(u=>/Mac/.test(u)&&!/iPhone|iPad/.test(u)?"macos":/Linux/.test(u)&&!/Android/.test(u)?"linux":"windows")(navigator.userAgent)};
 const TX={ru:{pop:"Самые популярные моды",mc:"Версия Minecraft",ld:"Загрузчик",any:"Любая",dl:"Скачать",no:"Не поддерживается",page:"Открыть страницу",none:"Нет файлов"},en:{pop:"Most popular mods",mc:"Minecraft version",ld:"Loader",any:"Any",dl:"Download",no:"Not supported",page:"Open page",none:"No files"},pl:{pop:"Najpopularniejsze mody",mc:"Wersja Minecrafta",ld:"Loader",any:"Dowolna",dl:"Pobierz",no:"Nieobsługiwane",page:"Otwórz stronę",none:"Brak plików"},uk:{pop:"Найпопулярніші моди",mc:"Версія Minecraft",ld:"Завантажувач",any:"Будь-яка",dl:"Завантажити",no:"Не підтримується",page:"Відкрити сторінку",none:"Немає файлів"}};
 const tx=k=>(TX[st.l]||TX.en)[k]||TX.en[k];
+const TY={ru:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Сборка",own:"Свой цвет"},en:{mod:"Mod",shader:"Shader",resourcepack:"Resource pack",modpack:"Modpack",own:"Custom color"},pl:{mod:"Mod",shader:"Shader",resourcepack:"Paczka zasobów",modpack:"Zestaw",own:"Własny kolor"},uk:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Збірка",own:"Власний колір"}};
+const ty=k=>(TY[st.l]||TY.en)[k]||TY.en[k];
+function osSet(o){st.o=o;sv();document.querySelectorAll("#os a").forEach(a=>a.classList.toggle("on",a.dataset.os===o));const b=$("#dlb");b.href="/download/"+o;b.textContent=((L[st.l]||L.en).dl)+" · "+OSN[o]}
+function h2x(h){const s=.85,l=.58,a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,"0")};return"#"+f(0)+f(8)+f(4)}
+/* ---- анимации фона ---- */
+const fx=$("#fx"),cx=fx.getContext("2d");let P=[],W=0,H=0,raf=0,T=0,mode="";
+const R=(a,b)=>a+Math.random()*(b-a);
+function rs(){W=fx.width=innerWidth;H=fx.height=innerHeight}
+function mk(m){const sm=W<700,n=m=="spring"?(sm?60:130):m=="cold"?(sm?45:90):m=="autumn"?(sm?18:34):30;P=Array.from({length:n},()=>({x:R(0,W),y:R(-H,H),s:R(.4,1),p:R(0,6.28),r:R(0,6.28),v:Math.random()}))}
+function fxStart(m){if(m===mode&&P.length)return;mode=m;cancelAnimationFrame(raf);P=[];cx.clearRect(0,0,W,H);
+ if(!["cold","warm","autumn","spring"].includes(m)||matchMedia("(prefers-reduced-motion:reduce)").matches)return;mk(m);loop()}
+function sun(){const x=W*.88,y=H*.1,pu=.5+.5*Math.sin(T*.8),M=Math.max(W,H);
+ const g=cx.createRadialGradient(x,y,0,x,y,M*.7);g.addColorStop(0,`rgba(255,200,80,${.55+.15*pu})`);g.addColorStop(.25,`rgba(255,170,60,${.2+.08*pu})`);g.addColorStop(1,"rgba(255,170,60,0)");cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ cx.save();cx.translate(x,y);cx.rotate(T*.05);cx.fillStyle="rgba(255,210,100,.1)";
+ for(let i=0;i<12;i++){cx.rotate(Math.PI/6);cx.beginPath();cx.moveTo(0,0);cx.lineTo(-60,M*1.2);cx.lineTo(60,M*1.2);cx.fill()}
+ cx.restore();cx.beginPath();cx.arc(x,y,46+4*pu,0,6.28);cx.fillStyle="rgba(255,222,130,.92)";cx.fill();
+ for(const p of P){p.y-=.25*p.s;p.x+=Math.sin(T+p.p)*.3;if(p.y<-10){p.y=H+10;p.x=R(0,W)}cx.beginPath();cx.arc(p.x,p.y,1.5+p.s*2,0,6.28);cx.fillStyle=`rgba(255,190,70,${.2+.3*p.s})`;cx.fill()}}
+function loop(){T+=.016;cx.clearRect(0,0,W,H);
+ if(mode=="warm")sun();
+ else for(const p of P){
+  if(mode=="cold"){p.y+=.6+p.s*1.2;p.x+=Math.sin(T+p.p)*.5;cx.beginPath();cx.arc(p.x,p.y,1.5+p.s*3,0,6.28);cx.fillStyle=`rgba(255,255,255,${.45+.4*p.s})`;cx.fill()}
+  else if(mode=="spring"){p.y+=11+p.s*8;p.x-=1.5;cx.beginPath();cx.moveTo(p.x,p.y);cx.lineTo(p.x-2,p.y-10-8*p.s);cx.strokeStyle=`rgba(160,210,255,${.3+.3*p.s})`;cx.lineWidth=1.2;cx.stroke()}
+  else{p.y+=.8+p.s*1.2;p.x+=Math.sin(T*1.2+p.p)*1.2;p.r+=.02;cx.save();cx.translate(p.x,p.y);cx.rotate(p.r);cx.font=(16+p.s*18)+"px serif";cx.fillText(p.v>.5?"🍁":"🍂",0,0);cx.restore()}
+  if(p.y>H+30||p.x<-30||p.x>W+30){p.y=-30;p.x=R(0,W)}}
+ raf=requestAnimationFrame(loop)}
+rs();addEventListener("resize",()=>{rs();if(mode){const m=mode;mode="";fxStart(m)}});
 function ld(){try{Object.assign(st,JSON.parse(localStorage.getItem("sa")||"{}"))}catch(e){}}
 function sv(){try{localStorage.setItem("sa",JSON.stringify(st))}catch(e){}}
 function ap(){
@@ -159,6 +215,7 @@ function ap(){
  const d=L[st.l]||L.en;
  document.querySelectorAll("[data-i]").forEach(e=>e.textContent=d[e.dataset.i]);
  $("#lang").value=st.l;docs();const ph=$("#poph");if(ph)ph.textContent=tx("pop");
+ fxStart(st.t);osSet(st.o);$("#ownl").textContent=ty("own");
 }
 function demo(){const d=L[st.l];$("#msg").textContent="Demo: "+(d?d.note:"")}
 const MAIL="simeon.alyushev@gmail.com";
@@ -172,10 +229,10 @@ p:`<div class='card doc'><h2>Polityka prywatności</h2><p>Administrator danych: 
 };
 function docs(){const d=D[st.l]||D.en;$("#about").innerHTML=d.a;$("#privacy").innerHTML=d.p}
 const V=["login","about","privacy","catalog","account"];
-function route(){const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home",...V].forEach(x=>$("#"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
+function route(){$("#dock").classList.toggle("on",["","home","catalog"].includes(location.hash.slice(1)));const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home",...V].forEach(x=>$("#"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
 ld();
 $("#lang").innerHTML=Object.keys(L).map(k=>`<option value="${k}">${L[k].n}</option>`).join("");
-$("#accents").innerHTML=AC.map(c=>`<button class="sw" data-c="${c}" style="background:${c}"></button>`).join("");
+$("#accents").innerHTML=AC.map(c=>`<button class="sw" data-c="${c}" title="${BN[c]||c}" style="background:${c}"></button>`).join("");
 $("#themes").innerHTML=TH.map(t=>`<button class="sw tsw" data-t="${t[0]}" title="${t[0]}" style="background:${t[1]}"></button>`).join("");
 $("#themes").onclick=e=>{if(e.target.dataset.t){st.t=e.target.dataset.t;sv();ap()}};
 $("#accents").onclick=e=>{if(e.target.dataset.c){st.a=e.target.dataset.c;sv();ap()}};
@@ -187,10 +244,21 @@ if(a.length){b.removeAttribute("data-i");b.textContent=a[0].name+(a.length>1?" +
 $("#list").innerHTML=a.map(x=>"<li>"+(x.p==="ely"?"Ely.by":"Microsoft")+": "+esc(x.name)+"</li>").join("")||"<li>—</li>";$("#cnt").textContent=a.length+"/10"}catch(e){}}
 let TYP="mod";
 document.querySelectorAll("#typs button").forEach(b=>b.onclick=()=>{TYP=b.dataset.v;document.querySelectorAll("#typs button").forEach(x=>x.classList.toggle("on",x===b));go()});
-async function api(u){const r=await fetch(u),d=await r.json();if(!r.ok)throw new Error(d.error||"Error");return d}
+const PH="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><rect width="56" height="56" rx="14" fill="#8884"/><text x="28" y="38" font-size="28" text-anchor="middle">🧩</text></svg>');
+addEventListener("error",e=>{const i=e.target;if(i&&i.tagName==="IMG"&&!i.dataset.f){i.dataset.f=1;i.src=PH}},true);
+const ca=k=>{try{return JSON.parse(localStorage.getItem("c:"+k))}catch(e){return null}};
+async function getJ(u,k){let e;for(let i=0;i<3;i++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),9000);const r=await fetch(u,{signal:c.signal});clearTimeout(t);let d;try{d=await r.json()}catch(_){throw new Error("HTTP "+r.status)}if(!r.ok)throw new Error(d.error||"HTTP "+r.status);try{localStorage.setItem("c:"+k,JSON.stringify(d))}catch(_){}return d}catch(x){e=x;await new Promise(r=>setTimeout(r,500*(i+1)))}}
+ const c=ca(k);if(c)return c;throw e}
+const api=u=>getJ(u,"a"+u);
+const hit=(h,t)=>({src:"modrinth",id:h.project_id,title:h.title,desc:h.description,icon:h.icon_url,downloads:h.downloads,author:h.author,url:"https://modrinth.com/"+t+"/"+h.slug,type:t});
 const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n||0);
-async function go(){const p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:TYP,loader:$("#ldr").value,version:$("#ver").value});$("#res").textContent="…";
-try{const d=await api("/api/search?"+p);window.RS=d.results;$("#res").innerHTML=d.results.map((x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||"")+'" alt=""><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>⬇ "+fmt(x.downloads)+(x.author?" · "+esc(x.author):"")+"</small></div></div>").join("")||"—"}catch(e){$("#res").textContent=e.message}}
+const cardH=(x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||PH)+'" alt="" loading="lazy"><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>"+(x.downloads?"⬇ "+fmt(x.downloads):"")+(x.author?" · "+esc(x.author):"")+"</small></div></div>";
+let SEQ=0;
+async function go(){const my=++SEQ,p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:TYP,loader:$("#ldr").value,version:$("#ver").value}),u="/api/search?"+p,c=ca("a"+u);
+ const draw=r=>{window.RS=r;$("#res").innerHTML=r.map(cardH).join("")||"—"};
+ if(c&&c.results)draw(c.results);else $("#res").textContent="…";
+ try{const d=await api(u);if(my!==SEQ)return;draw(d.results||[])}
+ catch(e){if(my!==SEQ)return;if(!(c&&c.results)){$("#res").innerHTML='<div class="card" style="grid-column:1/-1">'+esc(e.message)+' <button class="btn s" id="rt" style="padding:6px 16px;margin-left:8px">↻</button></div>';$("#rt").onclick=go}}}
 $("#res").onclick=e=>{const c=e.target.closest(".pc");if(c)show(window.RS[+c.dataset.i])};
 let VS=[],CUR=null;
 const vkey=v=>v.split(".").map(n=>parseInt(n)||0);
@@ -208,20 +276,25 @@ try{const d=await api("/api/versions?"+new URLSearchParams({src:x.src,id:x.id}))
  $("#vm").onchange=$("#vl").onchange=vlist;vlist()}catch(e){$("#vs").textContent=e.message}}
 $("#mx").onclick=()=>$("#md").classList.add("hide");$("#md").onclick=e=>{if(e.target.id==="md")$("#md").classList.add("hide")};
 $("#go").onclick=go;
-const cat=()=>{if(location.hash==="#catalog"&&!window.RS)go()};addEventListener("hashchange",cat);cat();$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
+const cat=()=>{if(location.hash==="#catalog"&&!(window.RS&&window.RS.length))go()};addEventListener("pageshow",cat);addEventListener("hashchange",cat);cat();$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
 $("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST"});location.href="/#home";location.reload()};
 
 const FB=[["AANobbMI","sodium","Sodium","Modern rendering engine for Minecraft"],["P7dR8mSH","fabric-api","Fabric API","Core API library for Fabric mods"],["gvQqBUqZ","lithium","Lithium","Game logic and performance optimizations"]];
 let PS=[];
-async function pop(){let r;
- try{const d=await(await fetch("https://api.modrinth.com/v2/search?limit=3&index=downloads&facets="+encodeURIComponent('[["project_type:mod"]]'))).json();
-  r=d.hits.map(h=>({src:"modrinth",id:h.project_id,title:h.title,desc:h.description,icon:h.icon_url,downloads:h.downloads,author:h.author,url:"https://modrinth.com/mod/"+h.slug}))}
- catch(e){r=FB.map(f=>({src:"modrinth",id:f[0],title:f[2],desc:f[3],icon:"",downloads:0,author:"",url:"https://modrinth.com/mod/"+f[1]}))}
- PS=r;$("#popg").innerHTML=r.map((x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||"")+'" alt=""><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>"+(x.downloads?"⬇ "+fmt(x.downloads):"")+(x.author?" · "+esc(x.author):"")+"</small></div></div>").join("")}
+async function pop(){const u="https://api.modrinth.com/v2/search?limit=3&index=downloads&facets="+encodeURIComponent('[["project_type:mod"]]'),k="pop",c=ca(k);
+ const draw=r=>{PS=r;$("#popg").innerHTML=r.map(cardH).join("")};
+ if(c&&c.hits)draw(c.hits.map(h=>hit(h,"mod")));
+ try{draw((await getJ(u,k)).hits.map(h=>hit(h,"mod")))}catch(e){if(!(c&&c.hits))draw(FB.map(f=>({src:"modrinth",id:f[1],title:f[2],desc:f[3],icon:"",downloads:0,author:"",url:"https://modrinth.com/mod/"+f[1]})))}}
+const DT=["mod","shader","resourcepack","modpack"];let DK=[];
+const DF={mod:["sodium","Sodium","Modern rendering engine for Minecraft"],shader:["complementary-reimagined","Complementary Shaders","All-in-one shader pack"],resourcepack:["faithful-32x","Faithful 32x","Classic textures with twice the detail"],modpack:["fabulously-optimized","Fabulously Optimized","Performance and visuals modpack"]};
+async function dock(){DK=DT.map(t=>{const f=DF[t];return{src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",downloads:0,url:"https://modrinth.com/"+t+"/"+f[0],type:t}});
+ await Promise.all(DT.map(async(t,i)=>{try{const d=await getJ("https://api.modrinth.com/v2/search?limit=1&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),"dk"+t);if(d.hits&&d.hits[0])DK[i]=hit(d.hits[0],t)}catch(e){}}));
+ $("#dock").innerHTML=DK.map((x,i)=>'<div class="card dk" data-i="'+i+'" style="animation-delay:'+(i*.25)+'s"><div class="t">'+esc(ty(x.type))+'</div><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><b>'+esc(x.title)+'</b></div><p>'+esc(x.desc)+'</p><span class="btn p">'+tx("dl")+"</span></div>").join("")}
+$("#dock").onclick=e=>{const c=e.target.closest(".dk");if(c)show(DK[+c.dataset.i])};
+$("#hue").oninput=e=>{st.a=h2x(+e.target.value);sv();ap()};
 $("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
-(()=>{const u=navigator.userAgent,o=/iPhone|iPad|Android/.test(u)?"windows":/Win/.test(u)?"windows":/Mac/.test(u)?"macos":"linux";
- document.querySelectorAll("#os a").forEach(a=>a.classList.toggle("on",a.dataset.os===o));$("#dlb").href="/download/"+o})();
-pop();me();
+$("#os").onclick=e=>{const a=e.target.closest("a");if(a){e.preventDefault();osSet(a.dataset.os)}};
+pop();dock();me();
 </script>
 </body>
 </html>
