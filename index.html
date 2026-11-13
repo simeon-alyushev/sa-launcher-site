@@ -7,8 +7,11 @@
 <style>
 :root{--bg:#0f1115;--card:#181b22;--tx:#f2f4f8;--mu:#9aa3b2;--bd:#262b35;--ac:#4ade80;--acx:#06220f;--r:22px;--bl:0px;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-:root:not([data-theme="dark"]):not([data-theme="glass"]){--bg:#f4f6fa;--card:#fff;--tx:#14171d;--mu:#5d6676;--bd:#e2e6ee}
 :root[data-theme="light"]{--bg:#f4f6fa;--card:#fff;--tx:#14171d;--mu:#5d6676;--bd:#e2e6ee}
+:root[data-theme="amoled"]{--bg:#000;--card:#0c0c0f;--tx:#f2f4f8;--mu:#8b93a1;--bd:#1c1e24}
+:root[data-theme="midnight"]{--bg:#0a1020;--card:#111a30;--tx:#eaf0ff;--mu:#93a1c0;--bd:#1f2c4a}
+:root[data-theme="forest"]{--bg:#0d1410;--card:#141e18;--tx:#eef6f0;--mu:#97aa9d;--bd:#223027}
+:root[data-theme="sand"]{--bg:#f6f1e7;--card:#fffaf0;--tx:#2a2418;--mu:#7a6e58;--bd:#e5dcc7}
 :root[data-theme="glass"]{--bg:#0b0d14;--card:rgba(255,255,255,.08);--tx:#fff;--mu:#c3c9d6;--bd:rgba(255,255,255,.18);--bl:22px}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
@@ -24,6 +27,9 @@ body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-appl
 .pill button,.pill select{border:0;border-radius:999px;background:transparent;color:var(--tx);font:inherit;font-size:14px;padding:7px 14px;cursor:pointer}
 .pill button.on{background:var(--ac);color:var(--acx);font-weight:700}
 .pill select{background:transparent;padding:7px 10px}
+.pill a{border-radius:999px;color:var(--tx);text-decoration:none;font-size:14px;padding:8px 16px}
+.pill a.on{background:var(--ac);color:var(--acx);font-weight:700}
+.sw.tsw{border-color:rgba(128,128,128,.55)!important}.sw.tsw.on{border-color:var(--tx)!important}
 .pill select option{color:#000}
 .sw{width:22px;height:22px;border-radius:50%!important;padding:0!important;border:2px solid transparent!important}
 .sw.on{border-color:var(--tx)!important}
@@ -56,6 +62,9 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 .pc small,.vr small{color:var(--mu)}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px}
 .modal.hide{display:none}.mbox{max-width:720px;width:100%}
+.mbox a:not(.btn){color:var(--ac)}
+.off{opacity:.45;filter:grayscale(1)}.vr.off .btn{pointer-events:none;background:var(--bd);color:var(--mu)}
+.sec{margin:34px 0 6px;font-size:22px}.sel{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
 .vr{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)}
 </style>
 </head>
@@ -64,7 +73,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
  <div class="bar">
   <a class="logo" href="#home"><span class="mono">SA</span>SA Launcher</a>
   <div class="bar" style="gap:8px">
-   <div class="pill" id="themes"><button data-t="dark">●</button><button data-t="light">○</button><button data-t="glass">◐</button></div>
+   <div class="pill" id="themes"></div>
    <div class="pill" id="accents"></div>
    <div class="pill"><select id="lang"></select></div>
    <a class="btn s" href="#catalog" style="padding:10px 22px">Catalog</a><a class="btn p" id="acc" href="#login" data-i="login" style="padding:10px 22px"></a>
@@ -75,16 +84,16 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
   <section class="hero">
    <h1 data-i="h1"></h1>
    <p data-i="sub"></p>
-   <div class="dl"><a class="btn p" href="#" data-i="dl"></a><a class="btn s" href="#login" data-i="login"></a></div>
+   <div class="dl"><a class="btn p" id="dlb" href="/download/windows" data-i="dl"></a><a class="btn s" href="#login" data-i="login"></a></div>
   </section>
-  <div class="card mock"><div class="win"><div class="side"><i></i><i></i><i></i><i></i></div><div class="main"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
+  <h2 class="sec" id="poph"></h2><div class="rg" id="popg"></div>
   <div class="grid">
    <div class="card"><div class="ic">🔑</div><h3 data-i="t1"></h3><p data-i="d1"></p></div>
    <div class="card"><div class="ic">📦</div><h3 data-i="t2"></h3><p data-i="d2"></p></div>
    <div class="card"><div class="ic">⚡</div><h3 data-i="t3"></h3><p data-i="d3"></p></div>
    <div class="card"><div class="ic">🧩</div><h3 data-i="t4"></h3><p data-i="d4"></p></div>
   </div>
-  <div class="dl"><span class="pill"><button>Windows</button><button>macOS</button><button>Linux</button></span></div>
+  <div class="dl"><span class="pill" id="os"><a href="/download/windows" data-os="windows">Windows</a><a href="/download/macos" data-os="macos">macOS</a><a href="/download/linux" data-os="linux">Linux</a></span></div>
  </div>
 
  <div id="login" class="hide">
@@ -102,8 +111,8 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 <select id="ldr"><option value="">Any loader</option><option>fabric</option><option>forge</option><option>neoforge</option><option>quilt</option></select>
 <input id="ver" placeholder="1.21.1" size="6" style="border:0;background:transparent;color:var(--tx);font:inherit;padding:8px 12px"><button id="go" class="on">Search</button></div>
 <div class="pill" id="typs" style="margin-bottom:14px;flex-wrap:wrap;width:fit-content"><button data-v="mod" class="on">Mods</button><button data-v="modpack">Modpacks</button><button data-v="resourcepack">Resource packs</button><button data-v="shader">Shaders</button></div>
-<div id="res" class="rg"></div></div>
-<div id="md" class="modal hide"><div class="card mbox"><button class="btn s" id="mx" style="float:right;padding:8px 16px">✕</button><div id="mb"></div></div></div></div>
+<div id="res" class="rg"></div></div></div>
+<div id="md" class="modal hide"><div class="card mbox"><button class="btn s" id="mx" style="float:right;padding:8px 16px">✕</button><div id="mb"></div></div></div>
 <div id="account" class="hide"><div class="card doc"><h2>Account <small id="cnt"></small></h2><ul id="list"></ul>
 <a class="btn s" href="/auth/microsoft/start" style="margin:4px">+ Microsoft</a><a class="btn s" href="/auth/ely/start" style="margin:4px">+ Ely.by</a><button class="btn s" id="out" style="margin:4px">Log out</button></div></div>
 <div id="about" class="hide"></div><div id="privacy" class="hide"></div>
@@ -133,9 +142,12 @@ zh:{n:"简体中文",login:"登录",h1:"一个让人愿意打开的启动器",su
 "zh-TW":{n:"繁體中文",login:"登入",h1:"一個讓人願意打開的啟動器",sub:"Prism 風格的實例，Modrinth 風格的目錄，一鍵更新與最佳化。",dl:"下載",t1:"Microsoft 與 Ely.by",d1:"僅支援正版或 Ely.by，我們不儲存密碼。",t2:"實例",d2:"自訂版本、載入器和模組，各用獨立設定檔。",t3:"更新與最佳化",d3:"啟動器會找出所有模組都能運作的新版本。",t4:"模組目錄",d4:"一鍵安裝模組、光影和資源包。",lt:"登入 SA Launcher",ms:"使用 Microsoft 登入",ey:"使用 Ely.by 登入",note:"我們不會查看或儲存你的密碼。"},
 vi:{n:"Tiếng Việt",login:"Đăng nhập",h1:"Một launcher đáng để mở",sub:"Phiên bản kiểu Prism, danh mục kiểu Modrinth, cập nhật và tối ưu chỉ một cú nhấp.",dl:"Tải xuống",t1:"Microsoft và Ely.by",d1:"Chỉ bản quyền hoặc Ely.by. Chúng tôi không giữ mật khẩu.",t2:"Hồ sơ game",d2:"Phiên bản, trình nạp và mod riêng trong từng hồ sơ.",t3:"Cập nhật và tối ưu",d3:"Launcher tìm phiên bản mới mà mọi mod đều chạy được.",t4:"Danh mục mod",d4:"Mod, shader và gói tài nguyên chỉ một cú nhấp.",lt:"Đăng nhập SA Launcher",ms:"Đăng nhập bằng Microsoft",ey:"Đăng nhập bằng Ely.by",note:"Chúng tôi không xem hay lưu mật khẩu của bạn."}
 };
-const AC=["#4ade80","#60a5fa","#a78bfa","#f472b6","#fb923c","#facc15"];
+const AC=["#4ade80","#60a5fa","#a78bfa","#f472b6","#fb923c","#facc15","#22d3ee","#f87171","#e879f9","#a3e635"];
+const TH=[["dark","#0f1115"],["light","#f4f6fa"],["glass","linear-gradient(135deg,#4ade80,#7c5cff)"],["amoled","#000"],["midnight","#0a1020"],["forest","#0d1410"],["sand","#f6f1e7"]];
 const $=s=>document.querySelector(s),root=document.documentElement;
 const st={t:"dark",a:AC[0],l:"ru"};
+const TX={ru:{pop:"Самые популярные моды",mc:"Версия Minecraft",ld:"Загрузчик",any:"Любая",dl:"Скачать",no:"Не поддерживается",page:"Открыть страницу",none:"Нет файлов"},en:{pop:"Most popular mods",mc:"Minecraft version",ld:"Loader",any:"Any",dl:"Download",no:"Not supported",page:"Open page",none:"No files"},pl:{pop:"Najpopularniejsze mody",mc:"Wersja Minecrafta",ld:"Loader",any:"Dowolna",dl:"Pobierz",no:"Nieobsługiwane",page:"Otwórz stronę",none:"Brak plików"},uk:{pop:"Найпопулярніші моди",mc:"Версія Minecraft",ld:"Завантажувач",any:"Будь-яка",dl:"Завантажити",no:"Не підтримується",page:"Відкрити сторінку",none:"Немає файлів"}};
+const tx=k=>(TX[st.l]||TX.en)[k]||TX.en[k];
 function ld(){try{Object.assign(st,JSON.parse(localStorage.getItem("sa")||"{}"))}catch(e){}}
 function sv(){try{localStorage.setItem("sa",JSON.stringify(st))}catch(e){}}
 function ap(){
@@ -146,7 +158,7 @@ function ap(){
  document.querySelectorAll("#accents button").forEach(b=>b.classList.toggle("on",b.dataset.c===st.a));
  const d=L[st.l]||L.en;
  document.querySelectorAll("[data-i]").forEach(e=>e.textContent=d[e.dataset.i]);
- $("#lang").value=st.l;docs();
+ $("#lang").value=st.l;docs();const ph=$("#poph");if(ph)ph.textContent=tx("pop");
 }
 function demo(){const d=L[st.l];$("#msg").textContent="Demo: "+(d?d.note:"")}
 const MAIL="simeon.alyushev@gmail.com";
@@ -164,6 +176,7 @@ function route(){const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home"
 ld();
 $("#lang").innerHTML=Object.keys(L).map(k=>`<option value="${k}">${L[k].n}</option>`).join("");
 $("#accents").innerHTML=AC.map(c=>`<button class="sw" data-c="${c}" style="background:${c}"></button>`).join("");
+$("#themes").innerHTML=TH.map(t=>`<button class="sw tsw" data-t="${t[0]}" title="${t[0]}" style="background:${t[1]}"></button>`).join("");
 $("#themes").onclick=e=>{if(e.target.dataset.t){st.t=e.target.dataset.t;sv();ap()}};
 $("#accents").onclick=e=>{if(e.target.dataset.c){st.a=e.target.dataset.c;sv();ap()}};
 $("#lang").onchange=e=>{st.l=e.target.value;sv();ap()};
@@ -179,14 +192,36 @@ const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(
 async function go(){const p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:TYP,loader:$("#ldr").value,version:$("#ver").value});$("#res").textContent="…";
 try{const d=await api("/api/search?"+p);window.RS=d.results;$("#res").innerHTML=d.results.map((x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||"")+'" alt=""><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>⬇ "+fmt(x.downloads)+(x.author?" · "+esc(x.author):"")+"</small></div></div>").join("")||"—"}catch(e){$("#res").textContent=e.message}}
 $("#res").onclick=e=>{const c=e.target.closest(".pc");if(c)show(window.RS[+c.dataset.i])};
-async function show(x){$("#md").classList.remove("hide");$("#mb").innerHTML='<div style="display:flex;gap:14px;align-items:center"><img class="mi" src="'+esc(x.icon||"")+'" alt=""><div><h2 style="margin:0">'+esc(x.title)+"</h2><small>"+esc(x.desc)+'</small></div></div><p><a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+(x.src==="curseforge"?"CurseForge":"Modrinth")+' ↗</a></p><div id="vs">…</div>';
-try{const d=await api("/api/versions?"+new URLSearchParams({src:x.src,id:x.id,loader:$("#ldr").value,version:$("#ver").value}));
-$("#vs").innerHTML=d.versions.map(v=>'<div class="vr"><div><b>'+esc(v.name)+"</b><br><small>"+esc((v.mc||[]).slice(0,4).join(", "))+" · "+esc((v.loaders||[]).join(", "))+"</small></div>"+(v.url?'<a class="btn p" style="padding:8px 18px" href="'+esc(v.url)+'">Download</a>':'<a class="btn s" style="padding:8px 18px" target="_blank" rel="noopener" href="'+esc(x.url)+'">Open page</a>')+"</div>").join("")||"No files for these filters"}catch(e){$("#vs").textContent=e.message}}
+let VS=[],CUR=null;
+const vkey=v=>v.split(".").map(n=>parseInt(n)||0);
+const vcmp=(a,b)=>{const x=vkey(a),y=vkey(b);for(let i=0;i<3;i++){if((y[i]||0)!==(x[i]||0))return(y[i]||0)-(x[i]||0)}return 0};
+function vlist(){const mc=$("#vm").value,ld=$("#vl").value;
+ const ok=v=>(!mc||!(v.mc||[]).length||v.mc.includes(mc))&&(!ld||!(v.loaders||[]).length||v.loaders.includes(ld));
+ const rows=VS.map(v=>({v,ok:ok(v)}));rows.sort((a,b)=>b.ok-a.ok);
+ $("#vs").innerHTML=rows.map(({v,ok})=>'<div class="vr'+(ok?"":" off")+'"><div><b>'+esc(v.name)+"</b><br><small>"+esc((v.mc||[]).slice(0,6).join(", "))+" · "+esc((v.loaders||[]).join(", "))+"</small></div>"+
+ (!ok?'<span class="btn s" style="padding:8px 18px">'+tx("no")+"</span>":v.url?'<a class="btn p" style="padding:8px 18px" href="'+esc(v.url)+'">'+tx("dl")+"</a>":'<a class="btn s" style="padding:8px 18px" target="_blank" rel="noopener" href="'+esc(CUR.url)+'">'+tx("page")+"</a>")+"</div>").join("")||tx("none")}
+async function show(x){CUR=x;$("#md").classList.remove("hide");$("#mb").innerHTML='<div style="display:flex;gap:14px;align-items:center"><img class="mi" src="'+esc(x.icon||"")+'" alt=""><div><h2 style="margin:0">'+esc(x.title)+"</h2><small>"+esc(x.desc)+'</small></div></div><p><a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+(x.src==="curseforge"?"CurseForge":"Modrinth")+' ↗</a></p><div id="vs">…</div>';
+try{const d=await api("/api/versions?"+new URLSearchParams({src:x.src,id:x.id}));VS=d.versions||[];
+ const mcs=[...new Set(VS.flatMap(v=>v.mc||[]))].sort(vcmp),lds=[...new Set(VS.flatMap(v=>v.loaders||[]))];
+ const pm=$("#ver").value,pl=$("#ldr").value;
+ $("#vs").insertAdjacentHTML("beforebegin",'<div class="sel"><div class="pill"><select id="vm"><option value="">'+tx("mc")+": "+tx("any")+"</option>"+mcs.map(m=>'<option'+(m===pm?" selected":"")+">"+esc(m)+"</option>").join("")+'</select></div><div class="pill"><select id="vl"><option value="">'+tx("ld")+": "+tx("any")+"</option>"+lds.map(m=>'<option'+(m===pl?" selected":"")+">"+esc(m)+"</option>").join("")+"</select></div></div>");
+ $("#vm").onchange=$("#vl").onchange=vlist;vlist()}catch(e){$("#vs").textContent=e.message}}
 $("#mx").onclick=()=>$("#md").classList.add("hide");$("#md").onclick=e=>{if(e.target.id==="md")$("#md").classList.add("hide")};
 $("#go").onclick=go;
 const cat=()=>{if(location.hash==="#catalog"&&!window.RS)go()};addEventListener("hashchange",cat);cat();$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
 $("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST"});location.href="/#home";location.reload()};
-me();
+
+const FB=[["AANobbMI","sodium","Sodium","Modern rendering engine for Minecraft"],["P7dR8mSH","fabric-api","Fabric API","Core API library for Fabric mods"],["gvQqBUqZ","lithium","Lithium","Game logic and performance optimizations"]];
+let PS=[];
+async function pop(){let r;
+ try{const d=await(await fetch("https://api.modrinth.com/v2/search?limit=3&index=downloads&facets="+encodeURIComponent('[["project_type:mod"]]'))).json();
+  r=d.hits.map(h=>({src:"modrinth",id:h.project_id,title:h.title,desc:h.description,icon:h.icon_url,downloads:h.downloads,author:h.author,url:"https://modrinth.com/mod/"+h.slug}))}
+ catch(e){r=FB.map(f=>({src:"modrinth",id:f[0],title:f[2],desc:f[3],icon:"",downloads:0,author:"",url:"https://modrinth.com/mod/"+f[1]}))}
+ PS=r;$("#popg").innerHTML=r.map((x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||"")+'" alt=""><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>"+(x.downloads?"⬇ "+fmt(x.downloads):"")+(x.author?" · "+esc(x.author):"")+"</small></div></div>").join("")}
+$("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
+(()=>{const u=navigator.userAgent,o=/iPhone|iPad|Android/.test(u)?"windows":/Win/.test(u)?"windows":/Mac/.test(u)?"macos":"linux";
+ document.querySelectorAll("#os a").forEach(a=>a.classList.toggle("on",a.dataset.os===o));$("#dlb").href="/download/"+o})();
+pop();me();
 </script>
 </body>
 </html>
