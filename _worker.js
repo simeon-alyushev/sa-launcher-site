@@ -68,16 +68,36 @@ async function search(u, env) {
     if (LD[l] && t === 'mod') p.set('modLoaderType', LD[l]);
     const r = await fetch('https://api.curseforge.com/v1/mods/search?' + p, { headers: { 'x-api-key': env.CF_API_KEY, Accept: 'application/json' } });
     if (!r.ok) return json({ error: 'CurseForge error ' + r.status }, 502);
-    res = (await r.json()).data.map(m => ({ title: m.name, desc: m.summary, icon: m.logo && m.logo.thumbnailUrl, downloads: m.downloadCount, url: m.links && m.links.websiteUrl }));
+    res = (await r.json()).data.map(m => ({ id: m.id, src: 'curseforge', author: (m.authors && m.authors[0] || {}).name, title: m.name, desc: m.summary, icon: m.logo && m.logo.thumbnailUrl, downloads: m.downloadCount, url: m.links && m.links.websiteUrl }));
   } else {
     const f = [['project_type:' + t]];
     if (l && (t === 'mod' || t === 'modpack')) f.push(['categories:' + l]);
     if (v) f.push(['versions:' + v]);
     const r = await fetch('https://api.modrinth.com/v2/search?' + new URLSearchParams({ query: q, limit: '20', facets: JSON.stringify(f) }), { headers: { 'User-Agent': UA } });
     if (!r.ok) return json({ error: 'Modrinth error ' + r.status }, 502);
-    res = (await r.json()).hits.map(h => ({ title: h.title, desc: h.description, icon: h.icon_url, downloads: h.downloads, url: 'https://modrinth.com/' + h.project_type + '/' + h.slug }));
+    res = (await r.json()).hits.map(h => ({ id: h.project_id, src: 'modrinth', author: h.author, title: h.title, desc: h.description, icon: h.icon_url, downloads: h.downloads, url: 'https://modrinth.com/' + h.project_type + '/' + h.slug }));
   }
   return json({ results: res.filter(x => /^https:\/\//.test(x.url || '')) });
+}
+ 
+async function versions(u, env) {
+  const g = k => u.searchParams.get(k) || '', id = g('id'), l = g('loader'), v = g('version');
+  if (!/^[A-Za-z0-9_-]+$/.test(id)) return json({ error: 'bad id' }, 400);
+  if (g('src') === 'curseforge') {
+    if (!env.CF_API_KEY) return json({ error: 'CurseForge is not configured yet' }, 503);
+    const p = new URLSearchParams({ pageSize: '20' });
+    if (v) p.set('gameVersion', v);
+    if (LD[l]) p.set('modLoaderType', LD[l]);
+    const r = await fetch(`https://api.curseforge.com/v1/mods/${id}/files?` + p, { headers: { 'x-api-key': env.CF_API_KEY } });
+    if (!r.ok) return json({ error: 'CurseForge error ' + r.status }, 502);
+    return json({ versions: (await r.json()).data.map(f => ({ name: f.displayName, mc: f.gameVersions.filter(x => /^\d/.test(x)), loaders: f.gameVersions.filter(x => !/^\d/.test(x)), url: /^https:\/\//.test(f.downloadUrl || '') ? f.downloadUrl : '' })) });
+  }
+  const p = new URLSearchParams();
+  if (l) p.set('loaders', JSON.stringify([l]));
+  if (v) p.set('game_versions', JSON.stringify([v]));
+  const r = await fetch(`https://api.modrinth.com/v2/project/${id}/version?` + p, { headers: { 'User-Agent': UA } });
+  if (!r.ok) return json({ error: 'Modrinth error ' + r.status }, 502);
+  return json({ versions: (await r.json()).slice(0, 25).map(x => { const f = x.files.find(f => f.primary) || x.files[0]; return { name: x.name || x.version_number, mc: x.game_versions, loaders: x.loaders, url: f && /^https:\/\/cdn\.modrinth\.com\//.test(f.url) ? f.url : '' }; }) });
 }
  
 export default {
@@ -86,6 +106,7 @@ export default {
     if (m) return auth(req, env, u, m[1], !!m[2]);
     if (path === '/api/me') { const s = await verify(env, ck(req, 'sa')); return json({ accounts: s ? s.a : [] }); }
     if (path === '/api/logout' && req.method === 'POST') return new Response(null, { status: 204, headers: { 'Set-Cookie': setc('sa', '', 0) } });
+    if (path === '/api/versions') return versions(u, env);
     if (path === '/api/search') return search(u, env);
     return env.ASSETS.fetch(req);
   }
