@@ -12,18 +12,19 @@ async function verify(env, t) {
 }
 const ck = (req, n) => ((req.headers.get('Cookie') || '').split(/;\s*/).map(c => c.split('=')).find(c => c[0] === n) || [])[1];
 const setc = (n, v, age) => `${n}=${v}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
+const jwt = s => JSON.parse(dec.decode(ub64(s.split('.')[1])));
 const get = async (url, t) => (await fetch(url, { headers: { Authorization: 'Bearer ' + t } })).json();
  
 const P = {
   ely: {
     auth: 'https://account.ely.by/oauth2/v1', tok: 'https://account.ely.by/api/oauth2/v1/token', scope: 'account_info',
     id: e => e.ELY_CLIENT_ID, sec: e => e.ELY_CLIENT_SECRET,
-    me: async t => { const r = await get('https://account.ely.by/api/account/v1/info', t); return { id: String(r.id), name: r.username }; }
+    me: async t => { const r = await get('https://account.ely.by/api/account/v1/info', t.access_token); return { id: String(r.id), name: r.username }; }
   },
   microsoft: {
     auth: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize', tok: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
-    scope: 'openid profile User.Read', id: e => e.MS_CLIENT_ID, sec: e => e.MS_CLIENT_SECRET,
-    me: async t => { const r = await get('https://graph.microsoft.com/v1.0/me', t); return { id: r.id, name: r.displayName }; }
+    scope: 'openid profile', id: e => e.MS_CLIENT_ID, sec: e => e.MS_CLIENT_SECRET,
+    me: async t => { const c = jwt(t.id_token || ''); return { id: c.oid || c.sub, name: c.name || c.preferred_username || 'Microsoft account' }; }
   }
 };
  
@@ -41,8 +42,11 @@ async function auth(req, env, u, name, start) {
   if (!code || u.searchParams.get('state') !== ck(req, 'st')) return Response.redirect(u.origin + '/#login', 302);
   const t = await (await fetch(p.tok, { method: 'POST', body: new URLSearchParams({ grant_type: 'authorization_code', client_id: p.id(env), client_secret: p.sec(env), code, redirect_uri: ru }) })).json();
   if (!t.access_token) return new Response('Sign-in failed at token exchange: ' + (t.error_description || t.error || 'unknown error'), { status: 502 });
-  const me = await p.me(t.access_token);
+  let me;
+  try { me = await p.me(t); } catch { me = null; }
+  if (!me || !me.id) return new Response('Sign-in failed: could not read your profile', { status: 502 });
   const s = (await verify(env, ck(req, 'sa'))) || { a: [] };
+  s.a = s.a.filter(x => x && x.id);
   if (!s.a.some(x => x.p === name && x.id === me.id)) {
     if (s.a.length >= 10) return Response.redirect(u.origin + '/#account', 302); // limit: 10 accounts
     s.a.push({ p: name, id: me.id, name: me.name });
@@ -82,8 +86,8 @@ export default {
     if (m) return auth(req, env, u, m[1], !!m[2]);
     if (path === '/api/me') { const s = await verify(env, ck(req, 'sa')); return json({ accounts: s ? s.a : [] }); }
     if (path === '/api/logout' && req.method === 'POST') return new Response(null, { status: 204, headers: { 'Set-Cookie': setc('sa', '', 0) } });
-    if (path === '/api/env') return json(Object.keys(env)); // TEMP diagnostic: names only, remove later
     if (path === '/api/search') return search(u, env);
     return env.ASSETS.fetch(req);
   }
 };
+ 
