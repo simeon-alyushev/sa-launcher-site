@@ -80,7 +80,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 #hue{-webkit-appearance:none;appearance:none;width:200px;height:10px;border-radius:99px;margin:0 8px;background:linear-gradient(90deg,hsl(0 85% 58%),hsl(60 85% 58%),hsl(120 85% 58%),hsl(180 85% 58%),hsl(240 85% 58%),hsl(300 85% 58%),hsl(360 85% 58%))}
 #hue::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
 #hue::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
-.dock{position:fixed;right:18px;top:110px;width:250px;display:none;flex-direction:column;gap:12px;z-index:2;max-height:calc(100vh - 130px);overflow:auto;padding:4px;scrollbar-width:none}
+.dock{position:fixed;left:18px;top:110px;width:250px;display:none;flex-direction:column;gap:12px;z-index:2;max-height:calc(100vh - 130px);overflow:auto;padding:4px;scrollbar-width:none}
 @media(min-width:1560px){.dock.on{display:flex}}
 .dk{padding:12px;cursor:pointer;animation:drop .9s cubic-bezier(.3,1.4,.5,1) both;transition:transform .2s}
 .dk:hover{transform:translateY(-3px) scale(1.02)}
@@ -90,11 +90,23 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 .dk .btn{width:100%;padding:7px 14px;font-size:13px}
 @keyframes drop{from{transform:translateY(-140px) rotate(-5deg);opacity:0}to{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){.dk{animation:none}}
+.rain{position:fixed;right:18px;top:0;bottom:0;width:250px;overflow:hidden;pointer-events:none;z-index:2;display:none}
+@media(min-width:1560px){.rain.on{display:block}}
+.rc{position:absolute;top:0;left:0;width:230px;padding:10px 12px;cursor:pointer;pointer-events:auto;animation:fall linear infinite;will-change:transform}
+.rc .row{display:flex;gap:10px;align-items:center}.rc .mi{width:40px;height:40px;border-radius:11px}
+.rc .t{font-size:10px;color:var(--ac);font-weight:800;text-transform:uppercase}
+.rc b{display:block;font-size:14px;line-height:1.2}
+.rc p{margin:2px 0 0;font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.rc:hover{border-color:var(--ac)}
+.rain:has(.rc:hover) .rc{animation-play-state:paused}
+@keyframes fall{from{transform:translate(var(--x),-130px) rotate(var(--r))}to{transform:translate(var(--x),calc(100vh + 20px)) rotate(var(--r))}}
+@media(prefers-reduced-motion:reduce){.rain{display:none!important}}
 </style>
 </head>
 <body>
 <canvas id="fx"></canvas>
 <aside class="dock" id="dock"></aside>
+<aside class="rain" id="rain"></aside>
 <div class="wrap">
  <div class="bar">
   <a class="logo" href="#home"><span class="mono">SA</span>SA Launcher</a>
@@ -170,7 +182,7 @@ zh:{n:"简体中文",login:"登录",h1:"一个让人愿意打开的启动器",su
 "zh-TW":{n:"繁體中文",login:"登入",h1:"一個讓人願意打開的啟動器",sub:"Prism 風格的實例，Modrinth 風格的目錄，一鍵更新與最佳化。",dl:"下載",t1:"Microsoft 與 Ely.by",d1:"僅支援正版或 Ely.by，我們不儲存密碼。",t2:"實例",d2:"自訂版本、載入器和模組，各用獨立設定檔。",t3:"更新與最佳化",d3:"啟動器會找出所有模組都能運作的新版本。",t4:"模組目錄",d4:"一鍵安裝模組、光影和資源包。",lt:"登入 SA Launcher",ms:"使用 Microsoft 登入",ey:"使用 Ely.by 登入",note:"我們不會查看或儲存你的密碼。"},
 vi:{n:"Tiếng Việt",login:"Đăng nhập",h1:"Một launcher đáng để mở",sub:"Phiên bản kiểu Prism, danh mục kiểu Modrinth, cập nhật và tối ưu chỉ một cú nhấp.",dl:"Tải xuống",t1:"Microsoft và Ely.by",d1:"Chỉ bản quyền hoặc Ely.by. Chúng tôi không giữ mật khẩu.",t2:"Hồ sơ game",d2:"Phiên bản, trình nạp và mod riêng trong từng hồ sơ.",t3:"Cập nhật và tối ưu",d3:"Launcher tìm phiên bản mới mà mọi mod đều chạy được.",t4:"Danh mục mod",d4:"Mod, shader và gói tài nguyên chỉ một cú nhấp.",lt:"Đăng nhập SA Launcher",ms:"Đăng nhập bằng Microsoft",ey:"Đăng nhập bằng Ely.by",note:"Chúng tôi không xem hay lưu mật khẩu của bạn."}
 };
-const AC=["#1bd96a","#4f8cff","#f87171","#a78bfa","#f472b6","#fb923c","#facc15","#22d3ee","#e879f9","#a3e635"],BN={"#1bd96a":"Modrinth","#4f8cff":"Prism","#f87171":"SA Launcher"};
+const AC=["#1bd96a","#4f8cff","#f87171"],BN={"#1bd96a":"Modrinth","#4f8cff":"Prism","#f87171":"SA Launcher"};
 const TH0=[["dark","#0f1115"],["light","#f4f6fa"],["glass","linear-gradient(135deg,#4ade80,#7c5cff)"],["amoled","#000"],["midnight","#0a1020"],["forest","#0d1410"],["sand","#f6f1e7"]];
 const TH=[["dark","#0f1115"],["light","#f4f6fa"],["amoled","#000"],["cold","linear-gradient(135deg,#0a1626,#7cc4ff)"],["warm","linear-gradient(135deg,#fff3dc,#ffb347)"],["autumn","linear-gradient(135deg,#1d120b,#e8742c)"],["spring","linear-gradient(135deg,#0b1a1c,#5ec8d8)"]];
 const $=s=>document.querySelector(s),root=document.documentElement;
@@ -213,7 +225,7 @@ function ap(){
  document.querySelectorAll("#themes button").forEach(b=>b.classList.toggle("on",b.dataset.t===st.t));
  document.querySelectorAll("#accents button").forEach(b=>b.classList.toggle("on",b.dataset.c===st.a));
  const d=L[st.l]||L.en;
- document.querySelectorAll("[data-i]").forEach(e=>e.textContent=d[e.dataset.i]);
+ document.querySelectorAll("[data-i]:not(.pc):not(.dk):not(.rc)").forEach(e=>e.textContent=d[e.dataset.i]);
  $("#lang").value=st.l;docs();const ph=$("#poph");if(ph)ph.textContent=tx("pop");
  fxStart(st.t);osSet(st.o);$("#ownl").textContent=ty("own");
 }
@@ -229,7 +241,7 @@ p:`<div class='card doc'><h2>Polityka prywatności</h2><p>Administrator danych: 
 };
 function docs(){const d=D[st.l]||D.en;$("#about").innerHTML=d.a;$("#privacy").innerHTML=d.p}
 const V=["login","about","privacy","catalog","account"];
-function route(){$("#dock").classList.toggle("on",["","home","catalog"].includes(location.hash.slice(1)));const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home",...V].forEach(x=>$("#"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
+function route(){{const on=["","home","catalog"].includes(location.hash.slice(1));$("#dock").classList.toggle("on",on);$("#rain").classList.toggle("on",on)}const h=location.hash.slice(1),v=V.includes(h)?h:"home";["home",...V].forEach(x=>$("#"+x).classList.toggle("hide",x!==v));window.scrollTo(0,0)}
 ld();
 $("#lang").innerHTML=Object.keys(L).map(k=>`<option value="${k}">${L[k].n}</option>`).join("");
 $("#accents").innerHTML=AC.map(c=>`<button class="sw" data-c="${c}" title="${BN[c]||c}" style="background:${c}"></button>`).join("");
@@ -290,11 +302,19 @@ const DF={mod:["sodium","Sodium","Modern rendering engine for Minecraft"],shader
 async function dock(){DK=DT.map(t=>{const f=DF[t];return{src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",downloads:0,url:"https://modrinth.com/"+t+"/"+f[0],type:t}});
  await Promise.all(DT.map(async(t,i)=>{try{const d=await getJ("https://api.modrinth.com/v2/search?limit=1&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),"dk"+t);if(d.hits&&d.hits[0])DK[i]=hit(d.hits[0],t)}catch(e){}}));
  $("#dock").innerHTML=DK.map((x,i)=>'<div class="card dk" data-i="'+i+'" style="animation-delay:'+(i*.25)+'s"><div class="t">'+esc(ty(x.type))+'</div><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><b>'+esc(x.title)+'</b></div><p>'+esc(x.desc)+'</p><span class="btn p">'+tx("dl")+"</span></div>").join("")}
+let RN=[];
+async function rain(){const g=async(t,k)=>{try{return((await getJ("https://api.modrinth.com/v2/search?limit=6&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),k)).hits||[]).map(h=>hit(h,t))}catch(e){return[]}};
+ const [a,b]=await Promise.all([g("shader","rs"),g("resourcepack","rr")]);
+ for(let i=0;i<Math.max(a.length,b.length);i++){if(a[i])RN.push(a[i]);if(b[i])RN.push(b[i])}
+ if(RN.length<4)for(const t of["shader","resourcepack"]){const f=DF[t];RN.push({src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",url:"https://modrinth.com/"+t+"/"+f[0],type:t})}
+ const n=RN.length,d=n*2.6;
+ $("#rain").innerHTML=RN.map((x,i)=>'<div class="card rc" data-i="'+i+'" style="--x:'+(i%2?18:0)+'px;--r:'+((i%3-1)*3)+'deg;animation-duration:'+d+'s;animation-delay:-'+(i*2.6).toFixed(1)+'s"><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><div><div class="t">'+esc(ty(x.type))+'</div><b>'+esc(x.title)+'</b><p>'+esc(x.desc)+"</p></div></div></div>").join("")}
+$("#rain").onclick=e=>{const c=e.target.closest(".rc");if(c)show(RN[+c.dataset.i])};
 $("#dock").onclick=e=>{const c=e.target.closest(".dk");if(c)show(DK[+c.dataset.i])};
 $("#hue").oninput=e=>{st.a=h2x(+e.target.value);sv();ap()};
 $("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
 $("#os").onclick=e=>{const a=e.target.closest("a");if(a){e.preventDefault();osSet(a.dataset.os)}};
-pop();dock();me();
+pop();dock();rain();me();
 </script>
 </body>
 </html>
