@@ -49,6 +49,14 @@ body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-appl
 .note{color:var(--mu);font-size:13px;margin-top:10px}
 footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 .hide{display:none}.doc{max-width:720px;margin:40px auto}.doc h3{margin:22px 0 6px;font-size:17px}.doc p,.doc li{color:var(--mu)}.doc ul{padding-left:20px}
+.rg{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.pc{display:flex;gap:12px;padding:14px;cursor:pointer;text-align:left}
+.pc img,.mi{width:56px;height:56px;border-radius:16px;object-fit:cover;background:var(--bd);flex:none}
+.pc p{margin:2px 0;color:var(--mu);font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pc small,.vr small{color:var(--mu)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px}
+.modal.hide{display:none}.mbox{max-width:720px;width:100%}
+.vr{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)}
 </style>
 </head>
 <body>
@@ -88,13 +96,14 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
    <div class="note" id="msg" data-i="note"></div>
   </div>
  </div>
- <div id="catalog" class="hide"><div class="card doc" style="max-width:860px"><h2>Catalog</h2>
-<div class="pill" style="flex-wrap:wrap;border-radius:22px"><input id="q" placeholder="Search…" style="flex:1;min-width:140px;border:0;background:transparent;color:var(--tx);font:inherit;padding:8px 12px">
+ <div id="catalog" class="hide"><div style="max-width:980px;margin:30px auto">
+<div class="pill" style="border-radius:22px;flex-wrap:wrap;margin-bottom:12px"><input id="q" placeholder="Search mods, shaders, packs…" style="flex:1;min-width:160px;border:0;background:transparent;color:var(--tx);font:inherit;padding:10px 14px">
 <select id="src"><option value="modrinth">Modrinth</option><option value="curseforge">CurseForge</option></select>
-<select id="typ"><option value="mod">Mods</option><option value="modpack">Modpacks</option><option value="resourcepack">Resource packs</option><option value="shader">Shaders</option></select>
 <select id="ldr"><option value="">Any loader</option><option>fabric</option><option>forge</option><option>neoforge</option><option>quilt</option></select>
 <input id="ver" placeholder="1.21.1" size="6" style="border:0;background:transparent;color:var(--tx);font:inherit;padding:8px 12px"><button id="go" class="on">Search</button></div>
-<div id="res" style="margin-top:14px;display:grid;gap:10px"></div></div></div>
+<div class="pill" id="typs" style="margin-bottom:14px;flex-wrap:wrap;width:fit-content"><button data-v="mod" class="on">Mods</button><button data-v="modpack">Modpacks</button><button data-v="resourcepack">Resource packs</button><button data-v="shader">Shaders</button></div>
+<div id="res" class="rg"></div></div>
+<div id="md" class="modal hide"><div class="card mbox"><button class="btn s" id="mx" style="float:right;padding:8px 16px">✕</button><div id="mb"></div></div></div></div>
 <div id="account" class="hide"><div class="card doc"><h2>Account <small id="cnt"></small></h2><ul id="list"></ul>
 <a class="btn s" href="/auth/microsoft/start" style="margin:4px">+ Microsoft</a><a class="btn s" href="/auth/ely/start" style="margin:4px">+ Ely.by</a><button class="btn s" id="out" style="margin:4px">Log out</button></div></div>
 <div id="about" class="hide"></div><div id="privacy" class="hide"></div>
@@ -163,10 +172,19 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;"
 async function me(){try{const a=(await(await fetch("/api/me")).json()).accounts||[],b=$("#acc");
 if(a.length){b.removeAttribute("data-i");b.textContent=a[0].name+(a.length>1?" +"+(a.length-1):"");b.href="#account"}
 $("#list").innerHTML=a.map(x=>"<li>"+(x.p==="ely"?"Ely.by":"Microsoft")+": "+esc(x.name)+"</li>").join("")||"<li>—</li>";$("#cnt").textContent=a.length+"/10"}catch(e){}}
-async function go(){const p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:$("#typ").value,loader:$("#ldr").value,version:$("#ver").value});$("#res").textContent="…";
-try{const r=await fetch("/api/search?"+p),d=await r.json();if(!r.ok){$("#res").textContent=d.error||"Error";return}
-$("#res").innerHTML=d.results.map(x=>'<a class="card" style="display:flex;gap:12px;color:inherit;text-decoration:none;padding:14px" href="'+esc(x.url)+'" target="_blank" rel="noopener"><img src="'+esc(x.icon||"")+'" alt="" width="48" height="48" style="border-radius:12px"><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>⬇ "+Number(x.downloads||0).toLocaleString()+"</small></div></a>").join("")||"—"}catch(e){$("#res").textContent="Error"}}
-$("#go").onclick=go;$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
+let TYP="mod";
+document.querySelectorAll("#typs button").forEach(b=>b.onclick=()=>{TYP=b.dataset.v;document.querySelectorAll("#typs button").forEach(x=>x.classList.toggle("on",x===b));go()});
+async function api(u){const r=await fetch(u),d=await r.json();if(!r.ok)throw new Error(d.error||"Error");return d}
+const fmt=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n||0);
+async function go(){const p=new URLSearchParams({src:$("#src").value,q:$("#q").value,type:TYP,loader:$("#ldr").value,version:$("#ver").value});$("#res").textContent="…";
+try{const d=await api("/api/search?"+p);window.RS=d.results;$("#res").innerHTML=d.results.map((x,i)=>'<div class="card pc" data-i="'+i+'"><img src="'+esc(x.icon||"")+'" alt=""><div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p><small>⬇ "+fmt(x.downloads)+(x.author?" · "+esc(x.author):"")+"</small></div></div>").join("")||"—"}catch(e){$("#res").textContent=e.message}}
+$("#res").onclick=e=>{const c=e.target.closest(".pc");if(c)show(window.RS[+c.dataset.i])};
+async function show(x){$("#md").classList.remove("hide");$("#mb").innerHTML='<div style="display:flex;gap:14px;align-items:center"><img class="mi" src="'+esc(x.icon||"")+'" alt=""><div><h2 style="margin:0">'+esc(x.title)+"</h2><small>"+esc(x.desc)+'</small></div></div><p><a href="'+esc(x.url)+'" target="_blank" rel="noopener">'+(x.src==="curseforge"?"CurseForge":"Modrinth")+' ↗</a></p><div id="vs">…</div>';
+try{const d=await api("/api/versions?"+new URLSearchParams({src:x.src,id:x.id,loader:$("#ldr").value,version:$("#ver").value}));
+$("#vs").innerHTML=d.versions.map(v=>'<div class="vr"><div><b>'+esc(v.name)+"</b><br><small>"+esc((v.mc||[]).slice(0,4).join(", "))+" · "+esc((v.loaders||[]).join(", "))+"</small></div>"+(v.url?'<a class="btn p" style="padding:8px 18px" href="'+esc(v.url)+'">Download</a>':'<a class="btn s" style="padding:8px 18px" target="_blank" rel="noopener" href="'+esc(x.url)+'">Open page</a>')+"</div>").join("")||"No files for these filters"}catch(e){$("#vs").textContent=e.message}}
+$("#mx").onclick=()=>$("#md").classList.add("hide");$("#md").onclick=e=>{if(e.target.id==="md")$("#md").classList.add("hide")};
+$("#go").onclick=go;
+const cat=()=>{if(location.hash==="#catalog"&&!window.RS)go()};addEventListener("hashchange",cat);cat();$("#q").onkeydown=e=>{if(e.key==="Enter")go()};
 $("#out").onclick=async()=>{await fetch("/api/logout",{method:"POST"});location.href="/#home";location.reload()};
 me();
 </script>
