@@ -90,4 +90,3 @@ export default {
     return env.ASSETS.fetch(req);
   }
 };
- 
