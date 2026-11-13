@@ -13,7 +13,7 @@ async function verify(env, t) {
 const ck = (req, n) => ((req.headers.get('Cookie') || '').split(/;\s*/).map(c => c.split('=')).find(c => c[0] === n) || [])[1];
 const setc = (n, v, age) => `${n}=${v}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
 const get = async (url, t) => (await fetch(url, { headers: { Authorization: 'Bearer ' + t } })).json();
-
+ 
 const P = {
   ely: {
     auth: 'https://account.ely.by/oauth2/v1', tok: 'https://account.ely.by/api/oauth2/v1/token', scope: 'account_info',
@@ -26,7 +26,7 @@ const P = {
     me: async t => { const r = await get('https://graph.microsoft.com/v1.0/me', t); return { id: r.id, name: r.displayName }; }
   }
 };
-
+ 
 async function auth(req, env, u, name, start) {
   const p = P[name], ru = u.origin + '/auth/' + name;
   const need = { [name === 'ely' ? 'ELY_CLIENT_ID' : 'MS_CLIENT_ID']: p.id(env), [name === 'ely' ? 'ELY_CLIENT_SECRET' : 'MS_CLIENT_SECRET']: p.sec(env), SESSION_SECRET: env.SESSION_SECRET };
@@ -40,7 +40,7 @@ async function auth(req, env, u, name, start) {
   const code = u.searchParams.get('code');
   if (!code || u.searchParams.get('state') !== ck(req, 'st')) return Response.redirect(u.origin + '/#login', 302);
   const t = await (await fetch(p.tok, { method: 'POST', body: new URLSearchParams({ grant_type: 'authorization_code', client_id: p.id(env), client_secret: p.sec(env), code, redirect_uri: ru }) })).json();
-  if (!t.access_token) return Response.redirect(u.origin + '/#login', 302);
+  if (!t.access_token) return new Response('Sign-in failed at token exchange: ' + (t.error_description || t.error || 'unknown error'), { status: 502 });
   const me = await p.me(t.access_token);
   const s = (await verify(env, ck(req, 'sa'))) || { a: [] };
   if (!s.a.some(x => x.p === name && x.id === me.id)) {
@@ -52,7 +52,7 @@ async function auth(req, env, u, name, start) {
   h.append('Set-Cookie', setc('st', '', 0));
   return new Response(null, { status: 302, headers: h });
 }
-
+ 
 const CF = { mod: 6, modpack: 4471, resourcepack: 12, shader: 6552 }, LD = { forge: 1, fabric: 4, quilt: 5, neoforge: 6 };
 async function search(u, env) {
   const g = k => u.searchParams.get(k) || '', q = g('q'), t = CF[g('type')] ? g('type') : 'mod', l = g('loader'), v = g('version');
@@ -75,13 +75,14 @@ async function search(u, env) {
   }
   return json({ results: res.filter(x => /^https:\/\//.test(x.url || '')) });
 }
-
+ 
 export default {
   async fetch(req, env) {
     const u = new URL(req.url), path = u.pathname, m = path.match(/^\/auth\/(ely|microsoft)(\/start)?$/);
     if (m) return auth(req, env, u, m[1], !!m[2]);
     if (path === '/api/me') { const s = await verify(env, ck(req, 'sa')); return json({ accounts: s ? s.a : [] }); }
     if (path === '/api/logout' && req.method === 'POST') return new Response(null, { status: 204, headers: { 'Set-Cookie': setc('sa', '', 0) } });
+    if (path === '/api/env') return json(Object.keys(env)); // TEMP diagnostic: names only, remove later
     if (path === '/api/search') return search(u, env);
     return env.ASSETS.fetch(req);
   }
