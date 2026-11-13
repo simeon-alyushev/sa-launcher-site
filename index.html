@@ -104,6 +104,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 @media(prefers-reduced-motion:reduce){.rain{display:none!important}}
 .lgo{width:40px;height:40px;border-radius:12px;object-fit:cover;flex:none}
 .hd{--z:3.5px;display:inline-flex;align-items:center;justify-content:center;flex:none;width:calc(8*var(--z));height:calc(8*var(--z));border-radius:7px;background:var(--ac);color:var(--acx);font-weight:800;font-size:calc(4.6*var(--z));line-height:1;text-transform:uppercase}
+.hd{position:relative;overflow:hidden}.sk{position:absolute;inset:0;background:var(--sk) calc(-8*var(--z)) calc(-8*var(--z))/calc(64*var(--z)) calc(64*var(--z)) no-repeat;image-rendering:pixelated}.sk::after{content:"";position:absolute;inset:0;background:var(--sk) calc(-40*var(--z)) calc(-8*var(--z))/calc(64*var(--z)) calc(64*var(--z)) no-repeat;image-rendering:pixelated}
 .btn .hd{--z:3px;background:var(--acx);color:var(--ac)}
 .ar{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}.ar:first-child{border-top:0}
 .ar .hd{--z:5px}.ar .nm{flex:1;min-width:0}.ar .nm small{display:block;color:var(--mu)}
@@ -258,7 +259,7 @@ $("#lang").onchange=e=>{st.l=e.target.value;sv();ap()};
 addEventListener("hashchange",route);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let ACCS=[];
-const head=x=>'<span class="hd">'+esc([...(x.name||"?")][0])+"</span>";
+const head=x=>{const u=x.skin||(x.p==="ely"?"https://skinsystem.ely.by/skins/"+encodeURIComponent(x.name)+".png":"");return'<span class="hd">'+esc([...(x.name||"?")][0])+(u?'<span class="sk" style="--sk:url(&quot;'+esc(u)+'&quot;)"></span>':"")+"</span>"};
 function renderAcc(){const b=$("#acc");
  if(ACCS.length){b.removeAttribute("data-i");b.innerHTML=head(ACCS[0])+"<span>"+esc(ACCS[0].name)+(ACCS.length>1?" +"+(ACCS.length-1):"")+"</span>";b.href="#account"}
  else{b.dataset.i="login";b.textContent=(L[st.l]||L.en).login;b.href="#login"}
