@@ -101,6 +101,11 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 .rain:has(.rc:hover) .rc{animation-play-state:paused}
 @keyframes fall{from{transform:translate(var(--x),-130px) rotate(var(--r))}to{transform:translate(var(--x),calc(100vh + 20px)) rotate(var(--r))}}
 @media(prefers-reduced-motion:reduce){.rain{display:none!important}}
+.hd{--z:3.5px;position:relative;display:inline-block;flex:none;vertical-align:middle;width:calc(8*var(--z));height:calc(8*var(--z));border-radius:7px;background:var(--sk) calc(-8*var(--z)) calc(-8*var(--z))/calc(64*var(--z)) calc(64*var(--z)) no-repeat,var(--ac);image-rendering:pixelated;overflow:hidden}
+.hd::after{content:"";position:absolute;inset:0;background:var(--sk) calc(-40*var(--z)) calc(-8*var(--z))/calc(64*var(--z)) calc(64*var(--z)) no-repeat;image-rendering:pixelated}
+.btn .hd{--z:3px}
+.ar{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--bd)}.ar:first-child{border-top:0}
+.ar .hd{--z:5px}.ar .nm{flex:1;min-width:0}.ar .nm small{display:block;color:var(--mu)}
 </style>
 </head>
 <body>
@@ -153,7 +158,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 <div class="pill" id="typs" style="margin-bottom:14px;flex-wrap:wrap;width:fit-content"><button data-v="mod" class="on">Mods</button><button data-v="modpack">Modpacks</button><button data-v="resourcepack">Resource packs</button><button data-v="shader">Shaders</button></div>
 <div id="res" class="rg"></div></div></div>
 <div id="md" class="modal hide"><div class="card mbox"><button class="btn s" id="mx" style="float:right;padding:8px 16px">✕</button><div id="mb"></div></div></div>
-<div id="account" class="hide"><div class="card doc"><h2>Account <small id="cnt"></small></h2><ul id="list"></ul>
+<div id="account" class="hide"><div class="card doc"><h2>Account <small id="cnt"></small></h2><div id="list"></div>
 <a class="btn s" href="/auth/microsoft/start" style="margin:4px">+ Microsoft</a><a class="btn s" href="/auth/ely/start" style="margin:4px">+ Ely.by</a><button class="btn s" id="out" style="margin:4px">Log out</button></div></div>
 <div id="about" class="hide"></div><div id="privacy" class="hide"></div>
  <footer>© 2026 SA Launcher · Simeon Alyushev<br><a href="#about" style="color:inherit">About</a> · <a href="#privacy" style="color:inherit">Privacy</a><br><span style="font-size:12px">SA Launcher is not an official Minecraft product and is not approved by or associated with Mojang or Microsoft.</span></footer>
@@ -190,7 +195,7 @@ const OSN={windows:"Windows",macos:"macOS",linux:"Linux"};
 const st={t:"dark",a:"#f87171",l:"ru",o:(u=>/Mac/.test(u)&&!/iPhone|iPad/.test(u)?"macos":/Linux/.test(u)&&!/Android/.test(u)?"linux":"windows")(navigator.userAgent)};
 const TX={ru:{pop:"Самые популярные моды",mc:"Версия Minecraft",ld:"Загрузчик",any:"Любая",dl:"Скачать",no:"Не поддерживается",page:"Открыть страницу",none:"Нет файлов"},en:{pop:"Most popular mods",mc:"Minecraft version",ld:"Loader",any:"Any",dl:"Download",no:"Not supported",page:"Open page",none:"No files"},pl:{pop:"Najpopularniejsze mody",mc:"Wersja Minecrafta",ld:"Loader",any:"Dowolna",dl:"Pobierz",no:"Nieobsługiwane",page:"Otwórz stronę",none:"Brak plików"},uk:{pop:"Найпопулярніші моди",mc:"Версія Minecraft",ld:"Завантажувач",any:"Будь-яка",dl:"Завантажити",no:"Не підтримується",page:"Відкрити сторінку",none:"Немає файлів"}};
 const tx=k=>(TX[st.l]||TX.en)[k]||TX.en[k];
-const TY={ru:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Сборка",own:"Свой цвет"},en:{mod:"Mod",shader:"Shader",resourcepack:"Resource pack",modpack:"Modpack",own:"Custom color"},pl:{mod:"Mod",shader:"Shader",resourcepack:"Paczka zasobów",modpack:"Zestaw",own:"Własny kolor"},uk:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Збірка",own:"Власний колір"}};
+const TY={ru:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Сборка",own:"Свой цвет",out:"Выйти",outall:"Выйти из всех"},en:{mod:"Mod",shader:"Shader",resourcepack:"Resource pack",modpack:"Modpack",own:"Custom color",out:"Log out",outall:"Log out of all"},pl:{mod:"Mod",shader:"Shader",resourcepack:"Paczka zasobów",modpack:"Zestaw",own:"Własny kolor",out:"Wyloguj",outall:"Wyloguj ze wszystkich"},uk:{mod:"Мод",shader:"Шейдер",resourcepack:"Ресурспак",modpack:"Збірка",own:"Власний колір",out:"Вийти",outall:"Вийти з усіх"}};
 const ty=k=>(TY[st.l]||TY.en)[k]||TY.en[k];
 function osSet(o){st.o=o;sv();document.querySelectorAll("#os a").forEach(a=>a.classList.toggle("on",a.dataset.os===o));const b=$("#dlb");b.href="/download/"+o;b.textContent=((L[st.l]||L.en).dl)+" · "+OSN[o]}
 function h2x(h){const s=.85,l=.58,a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,"0")};return"#"+f(0)+f(8)+f(4)}
@@ -227,7 +232,7 @@ function ap(){
  const d=L[st.l]||L.en;
  document.querySelectorAll("[data-i]:not(.pc):not(.dk):not(.rc)").forEach(e=>e.textContent=d[e.dataset.i]);
  $("#lang").value=st.l;docs();const ph=$("#poph");if(ph)ph.textContent=tx("pop");
- fxStart(st.t);osSet(st.o);$("#ownl").textContent=ty("own");
+ fxStart(st.t);osSet(st.o);renderAcc();$("#ownl").textContent=ty("own");
 }
 function demo(){const d=L[st.l];$("#msg").textContent="Demo: "+(d?d.note:"")}
 const MAIL="simeon.alyushev@gmail.com";
@@ -249,11 +254,19 @@ $("#themes").innerHTML=TH.map(t=>`<button class="sw tsw" data-t="${t[0]}" title=
 $("#themes").onclick=e=>{if(e.target.dataset.t){st.t=e.target.dataset.t;sv();ap()}};
 $("#accents").onclick=e=>{if(e.target.dataset.c){st.a=e.target.dataset.c;sv();ap()}};
 $("#lang").onchange=e=>{st.l=e.target.value;sv();ap()};
-addEventListener("hashchange",route);ap();route();
+addEventListener("hashchange",route);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-async function me(){try{const a=(await(await fetch("/api/me")).json()).accounts||[],b=$("#acc");
-if(a.length){b.removeAttribute("data-i");b.textContent=a[0].name+(a.length>1?" +"+(a.length-1):"");b.href="#account"}
-$("#list").innerHTML=a.map(x=>"<li>"+(x.p==="ely"?"Ely.by":"Microsoft")+": "+esc(x.name)+"</li>").join("")||"<li>—</li>";$("#cnt").textContent=a.length+"/10"}catch(e){}}
+let ACCS=[];
+const head=x=>{const u=x.skin||(x.p==="ely"?"https://skinsystem.ely.by/skins/"+encodeURIComponent(x.name)+".png":"https://minotar.net/skin/"+encodeURIComponent(x.name));return'<span class="hd" style="--sk:url(&quot;'+esc(u)+'&quot;)"></span>'};
+function renderAcc(){const b=$("#acc");
+ if(ACCS.length){b.removeAttribute("data-i");b.innerHTML=head(ACCS[0])+"<span>"+esc(ACCS[0].name)+(ACCS.length>1?" +"+(ACCS.length-1):"")+"</span>";b.href="#account"}
+ else{b.dataset.i="login";b.textContent=(L[st.l]||L.en).login;b.href="#login"}
+ $("#list").innerHTML=ACCS.map((x,i)=>'<div class="ar">'+head(x)+'<div class="nm"><b>'+esc(x.name)+"</b><small>"+(x.p==="ely"?"Ely.by":"Microsoft")+'</small></div><button class="btn s" data-lo="'+i+'" style="padding:8px 18px">'+esc(ty("out"))+"</button></div>").join("")||"<p>—</p>";
+ $("#cnt").textContent=ACCS.length+"/10";$("#out").textContent=ty("outall")}
+async function me(){try{ACCS=(await(await fetch("/api/me")).json()).accounts||[]}catch(e){}renderAcc()}
+$("#list").onclick=async e=>{const c=e.target.closest("[data-lo]");if(!c)return;const x=ACCS[+c.dataset.lo];c.disabled=true;
+ try{await fetch("/api/logout",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({p:x.p,id:x.id,name:x.name,index:+c.dataset.lo})})}catch(_){}
+ await me();if(!ACCS.length)location.hash="#home"};
 let TYP="mod";
 document.querySelectorAll("#typs button").forEach(b=>b.onclick=()=>{TYP=b.dataset.v;document.querySelectorAll("#typs button").forEach(x=>x.classList.toggle("on",x===b));go()});
 const PH="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><rect width="56" height="56" rx="14" fill="#8884"/><text x="28" y="38" font-size="28" text-anchor="middle">🧩</text></svg>');
@@ -314,7 +327,7 @@ $("#dock").onclick=e=>{const c=e.target.closest(".dk");if(c)show(DK[+c.dataset.i
 $("#hue").oninput=e=>{st.a=h2x(+e.target.value);sv();ap()};
 $("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
 $("#os").onclick=e=>{const a=e.target.closest("a");if(a){e.preventDefault();osSet(a.dataset.os)}};
-pop();dock();rain();me();
+ap();route();pop();dock();rain();me();
 </script>
 </body>
 </html>
