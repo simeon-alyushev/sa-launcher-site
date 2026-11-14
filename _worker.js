@@ -20,14 +20,22 @@ const html = (msg, ok, s = 200) => new Response(`<!doctype html><meta charset="u
 // ---------- Minecraft (Xbox) для входа из лаунчера ----------
 const post = async (url, o) => { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(o) }); const d = await r.json().catch(() => ({})); if (!r.ok) { const e = new Error('HTTP ' + r.status); e.data = d; e.status = r.status; throw e; } return d; };
 async function msChain(msAccess) {
-  const xbl = await post('https://user.auth.xboxlive.com/user/authenticate', { Properties: { AuthMethod: 'RPS', SiteName: 'user.auth.xboxlive.com', RpsTicket: 'd=' + msAccess }, RelyingParty: 'http://auth.xboxlive.com', TokenType: 'JWT' });
+  // Каждый шаг подписан, чтобы в ошибке было видно, где именно отказ.
+  const step = async (name, fn) => { try { return await fn(); } catch (e) { if (e.data !== undefined || e.status) { const d = e.data || {}; const x = d.XErr ? ' XErr=' + d.XErr : ''; const m = d.errorMessage || d.Message || d.error_description || d.error || ''; const err = new Error(`[${name}] HTTP ${e.status || '?'}${x}${m ? ': ' + m : ''}`); err.status = e.status; err.msg = m; err.xerr = d.XErr; throw err; } throw e; } };
+  const xbl = await step('xbox-live', () => post('https://user.auth.xboxlive.com/user/authenticate', { Properties: { AuthMethod: 'RPS', SiteName: 'user.auth.xboxlive.com', RpsTicket: 'd=' + msAccess }, RelyingParty: 'http://auth.xboxlive.com', TokenType: 'JWT' }));
   let xsts;
   try { xsts = await post('https://xsts.auth.xboxlive.com/xsts/authorize', { Properties: { SandboxId: 'RETAIL', UserTokens: [xbl.Token] }, RelyingParty: 'rp://api.minecraftservices.com/', TokenType: 'JWT' }); }
-  catch (e) { const x = e.data && e.data.XErr; if (x === 2148916233) throw new Error('У аккаунта нет профиля Xbox. Создайте его на xbox.com.'); if (x === 2148916238) throw new Error('Детский аккаунт: добавьте его в семейную группу Microsoft.'); throw e; }
-  const mc = await post('https://api.minecraftservices.com/authentication/login_with_xbox', { identityToken: `XBL3.0 x=${xsts.DisplayClaims.xui[0].uhs};${xsts.Token}` });
+  catch (e) { const x = e.data && e.data.XErr; if (x === 2148916233) throw new Error('У аккаунта нет профиля Xbox. Создайте его на xbox.com.'); if (x === 2148916238) throw new Error('Детский аккаунт: добавьте его в семейную группу Microsoft.'); throw new Error('[xsts] HTTP ' + e.status + (x ? ' XErr=' + x : '')); }
+  let mc;
+  try { mc = await post('https://api.minecraftservices.com/authentication/login_with_xbox', { identityToken: `XBL3.0 x=${xsts.DisplayClaims.xui[0].uhs};${xsts.Token}` }); }
+  catch (e) {
+    const m = (e.data && (e.data.errorMessage || e.data.error)) || '';
+    if (e.status === 403 || /app registration/i.test(m)) throw new Error('[minecraft-login] HTTP ' + e.status + ': Mojang отклонил Application (client) ID вашего Azure-приложения (' + (m || 'Invalid app registration') + '). Его нужно добавить в список разрешённых: aka.ms/mce-reviewappid. Пока можно войти через Ely.by.');
+    throw new Error('[minecraft-login] HTTP ' + e.status + (m ? ': ' + m : ''));
+  }
   const H = { Authorization: 'Bearer ' + mc.access_token };
   const pr = await fetch('https://api.minecraftservices.com/minecraft/profile', { headers: H });
-  if (!pr.ok) throw new Error('На этом аккаунте нет лицензии Minecraft Java Edition. Войдите через Ely.by.');
+  if (!pr.ok) throw new Error('На этом аккаунте нет лицензии Minecraft Java Edition (профиль не найден, HTTP ' + pr.status + '). Войдите через Ely.by.');
   const prof = await pr.json();
   return { p: 'ms', id: prof.id, name: prof.name, accessToken: mc.access_token, expiresAt: Date.now() + (mc.expires_in || 86400) * 1000, skin: 'https://crafatar.com/skins/' + prof.id };
 }
@@ -137,7 +145,7 @@ async function search(u, env) {
   let res;
   if (g('src') === 'curseforge') {
     if (!env.CF_API_KEY) return json({ error: 'CurseForge is not configured yet' }, 503);
-    const p = new URLSearchParams({ gameId: '432', classId: CF[t], searchFilter: q, pageSize: '20' });
+    const p = new URLSearchParams({ gameId: '432', classId: CF[t], searchFilter: q, pageSize: '20', index: String(Math.max(0, +g('offset') || 0)) });
     if (v) p.set('gameVersion', v);
     if (LD[l] && t === 'mod') p.set('modLoaderType', LD[l]);
     const r = await fetch('https://api.curseforge.com/v1/mods/search?' + p, { headers: { 'x-api-key': env.CF_API_KEY, Accept: 'application/json' } });
@@ -178,12 +186,14 @@ async function versions(u, env) {
 async function logout(req, env) {
   let b = null; try { b = await req.json(); } catch { b = null; }
   const s = await verify(env, ck(req, 'sa'));
-  const h = new Headers();
-  if (s && b && b.id) {
-    s.a = (s.a || []).filter(x => x && !(String(x.id) === String(b.id) && (!b.p || x.p === b.p)));
-    h.append('Set-Cookie', s.a.length ? setc('sa', await sign(env, s), 2592000) : setc('sa', '', 0));
-  } else h.append('Set-Cookie', setc('sa', '', 0));
-  return new Response(null, { status: 204, headers: h });
+  const h = new Headers({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  let rest = [];
+  if (b && b.id) {
+    // Выход из ОДНОГО аккаунта: остальные остаются. Если cookie нечитаема — ничего не трогаем.
+    rest = ((s && s.a) || []).filter(x => x && !(String(x.id) === String(b.id) && (!b.p || x.p === b.p)));
+    if (s) h.append('Set-Cookie', rest.length ? setc('sa', await sign(env, { ...s, a: rest }), 2592000) : setc('sa', '', 0));
+  } else h.append('Set-Cookie', setc('sa', '', 0));   // «Выйти из всех»
+  return new Response(JSON.stringify({ accounts: rest }), { status: 200, headers: h });
 }
 
 export default {
@@ -194,7 +204,7 @@ export default {
     if (d) return download(d[1], env);
     if (path === '/launcher/login') return launcherLogin(u, env);
     if (path === '/api/link/refresh' && req.method === 'POST') return refresh(req, env);
-    if (path === '/api/me') { const s = await verify(env, ck(req, 'sa')); return json({ accounts: s ? s.a : [] }); }
+    if (path === '/api/me') { const s = await verify(env, ck(req, 'sa')); return new Response(JSON.stringify({ accounts: s ? s.a : [] }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }); }
     if (path === '/api/logout' && req.method === 'POST') return logout(req, env);
     if (path === '/api/versions') return versions(u, env);
     if (path === '/api/search') return search(u, env);
