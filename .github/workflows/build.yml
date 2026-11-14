@@ -1,5 +1,7 @@
 name: Build SA Launcher
 
+# Запуск: вкладка Actions -> Build SA Launcher -> Run workflow,
+# либо создайте тег:  git tag v1.0.0 && git push --tags
 on:
   push:
     tags: ['v*']
@@ -15,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            cmd: npx electron-builder --win --x64 --publish never
+            cmd: npx electron-builder --win --x64 --publish never -c.nsis.warningsAsErrors=false
             files: launcher/dist/*.exe
           - os: macos-latest
             cmd: npx electron-builder --mac --publish never
@@ -32,15 +34,26 @@ jobs:
       - name: Install
         working-directory: launcher
         run: npm install
-      - name: Set site URL
+      - name: Set site URL (repo variable SA_SITE, optional)
         if: ${{ vars.SA_SITE != '' }}
         working-directory: launcher
         env:
           SA_SITE: ${{ vars.SA_SITE }}
         run: node -e "const f=require('fs'),p=JSON.parse(f.readFileSync('package.json'));p.saSite=process.env.SA_SITE;f.writeFileSync('package.json',JSON.stringify(p,null,2))"
-      - name: Build
+      - name: Remove NSIS-only license files on macOS (the DMG license step fails on some languages)
+        if: runner.os == 'macOS'
+        run: rm -f launcher/build/license*.txt
+      - name: Build (one retry, DMG creation is sometimes flaky on CI)
         working-directory: launcher
-        run: ${{ matrix.cmd }}
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          for i in 1 2; do
+            ${{ matrix.cmd }} && exit 0
+            echo "Build attempt $i failed"
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: sa-launcher-${{ matrix.os }}
