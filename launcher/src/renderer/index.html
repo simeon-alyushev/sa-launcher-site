@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SA Launcher</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="blobs"><i></i><i></i><i></i></div>
+<canvas id="fx"></canvas>
+<div id="app">
+  <div class="drag"></div>
+  <aside class="rail" id="rail"></aside>
+  <main id="view"></main>
+  <div id="dock"></div>
+  <div id="modal" class="hide"></div>
+  <div id="toasts"></div>
+</div>
+<script src="i18n.js"></script>
+<script src="fx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
