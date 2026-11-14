@@ -1,32 +1,28 @@
-; SA Launcher: extra installer page "Create a desktop shortcut?"
-; Installer-only code is guarded with BUILD_UNINSTALLER (otherwise the uninstaller pass
-; reports unreferenced functions/variables). Variables are declared through a guarded
-; macro so the order in which electron-builder expands the hooks does not matter.
+﻿; SA Launcher: extra installer page "Create a desktop shortcut?"
+; (directory choice and licence pages are the standard electron-builder pages)
+; NOTE: everything that only the installer needs is guarded with BUILD_UNINSTALLER,
+; otherwise the uninstaller pass reports "unreferenced function/variable" warnings,
+; and electron-builder treats NSIS warnings as errors.
 !ifndef BUILD_UNINSTALLER
 
-!macro SA_Prepare
-  !ifndef SA_PREPARED
-    !define SA_PREPARED
-    !include "nsDialogs.nsh"
-    !include "LogicLib.nsh"
-    Var /GLOBAL SA_ScCheck
-    Var /GLOBAL SA_ScState
-    Var /GLOBAL SA_Dlg
-  !endif
-!macroend
-
 !macro customHeader
-  !insertmacro SA_Prepare
+  !include "nsDialogs.nsh"
+  !include "LogicLib.nsh"
+  Var /GLOBAL SA_ScCheck
+  Var /GLOBAL SA_ScState
+  Var /GLOBAL SA_Dlg
 !macroend
 
+!macro customInit
+  StrCpy $SA_ScState 1
+!macroend
+
+; The page functions are defined here (not in customHeader) because the MUI2 macros
+; (MUI_HEADER_TEXT) are only available once the assisted-installer pages are being declared.
 !macro customPageAfterChangeDir
-  !insertmacro SA_Prepare
   Function SA_ShortcutPage
     ${If} ${Silent}
       Abort
-    ${EndIf}
-    ${If} $SA_ScState == ""
-      StrCpy $SA_ScState 1
     ${EndIf}
     ${Switch} $LANGUAGE
       ${Case} 1049
@@ -63,7 +59,7 @@
 !macroend
 
 !macro customInstall
-  ${If} $SA_ScState != 0
+  ${If} $SA_ScState == 1
     CreateShortCut "$DESKTOP\${SHORTCUT_NAME}.lnk" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "" "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0
   ${EndIf}
 !macroend

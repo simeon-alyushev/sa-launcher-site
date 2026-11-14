@@ -6,6 +6,8 @@ const U = require('./util');
 const mc = require('./mc');
 const L = require('./loaders');
 const MR = require('./modrinth');
+const Crash = require('./crash');
+const CF = require('./curseforge');
 
 const FOLDERS = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' };
 // Slug'и Modrinth. Что не подходит под версию/загрузчик сборки — пропускается (попадёт в skipped), это нормально.
@@ -21,7 +23,7 @@ const modLoaders = loader => loader === 'quilt' ? ['quilt', 'fabric'] : [loader]
 class Instances {
   constructor({ dataDir, store, emit }) {
     this.dir = path.join(dataDir, 'instances'); this.shared = path.join(dataDir, 'shared');
-    this.store = store; this.emit = emit; this.running = new Map();
+    this.store = store; this.emit = emit; this.running = new Map(); this.stopped = new Set();
     fs.mkdirSync(this.dir, { recursive: true }); fs.mkdirSync(this.shared, { recursive: true });
   }
   path(id) { return path.join(this.dir, id); }
@@ -68,18 +70,115 @@ class Instances {
     if (!i.versionId || !U.exists(path.join(this.shared, 'versions', i.versionId, i.versionId + '.json'))) i = await this.prepare(id);
     const task = 'play:' + id; const t0 = Date.now();
     this.running.set(id, null); this.emit('state', { id, running: true });
+    const tail = []; const t1 = Date.now();
     try {
       const child = await mc.launch({
         shared: this.shared, instDir: this.path(id), versionId: i.versionId, inst: i, account: acc, settings: st,
-        progress: this.progress(task, i.name), log: line => this.emit('log', { id, line }),
-        onExit: code => { this.running.delete(id); const j = this.read(id); j.playtime = (j.playtime || 0) + Math.round((Date.now() - t0) / 1000); this.write(j); this.emit('state', { id, running: false, code }); }
+        progress: this.progress(task, i.name), log: line => { tail.push(line); if (tail.length > 600) tail.shift(); this.emit('log', { id, line }); },
+        onExit: code => { this.running.delete(id); const j = this.read(id); j.playtime = (j.playtime || 0) + Math.round((Date.now() - t0) / 1000); this.write(j); this.emit('state', { id, running: false, code }); if (code && code !== 0 && code !== 143 && code !== 130 && !this.stopped.delete(id)) this.handleCrash(id, tail.join('\n'), t1).catch(() => {}); }
       });
       this.running.set(id, child);
       const j = this.read(id); j.lastPlayed = Date.now(); this.write(j);
     } catch (e) { this.running.delete(id); this.emit('state', { id, running: false }); throw e; }
     finally { this.done(task); }
   }
-  stop(id) { const c = this.running.get(id); if (c) c.kill(); }
+  stop(id) { const c = this.running.get(id); if (c) { this.stopped.add(id); c.kill(); } }
+
+  // ---- вылеты: анализ и авто-починка ----
+  latestCrashReport(id, since) {
+    try {
+      const d = path.join(this.game(id), 'crash-reports');
+      const f = fs.readdirSync(d).map(n => ({ n, t: fs.statSync(path.join(d, n)).mtimeMs })).filter(x => x.t >= since - 5000).sort((a, b) => b.t - a.t)[0];
+      return f ? fs.readFileSync(path.join(d, f.n), 'utf8') : '';
+    } catch (_) { return ''; }
+  }
+  async handleCrash(id, log, since) {
+    const i = this.read(id);
+    const problems = Crash.analyze(log + '\n' + this.latestCrashReport(id, since));
+    const info = { id, problems, fixed: [], failed: [], auto: this.store.settings.autoFix !== false };
+    if (!problems.length) { this.emit('crash', info); return info; }
+    if (info.auto) Object.assign(info, await this.fixProblems(id, problems));
+    this.emit('crash', info); return info;
+  }
+  // карта modId -> файлы в папке mods
+  modIndex(id) {
+    const dir = this.contentDir(id, 'mod'); const map = {};
+    if (!U.exists(dir)) return map;
+    for (const f of fs.readdirSync(dir)) {
+      if (!/\.jar(\.disabled)?$/i.test(f)) continue;
+      for (const m of Crash.jarMods(path.join(dir, f))) (map[m.id.toLowerCase()] = map[m.id.toLowerCase()] || []).push({ file: f, version: m.version });
+    }
+    return map;
+  }
+  disableFile(id, file) { if (!file.endsWith('.disabled')) { const d = this.contentDir(id, 'mod'); fs.renameSync(path.join(d, file), path.join(d, file + '.disabled')); } }
+  async findProject(slugOrId) { try { return await MR.project(slugOrId); } catch (_) { return null; } }
+  async fixProblems(id, problems) {
+    const i = this.read(id); const fixed = [], failed = []; const idx = this.modIndex(id);
+    for (const p of problems) {
+      try {
+        if (p.type === 'missing' || p.type === 'wrong') {
+          const proj = await this.findProject(p.id);
+          if (!proj) throw new Error('not found');
+          const old = (idx[p.id] || []).map(x => x.file);
+          await this.installProject(id, proj.id);
+          // убираем старую версию того же мода
+          const cur = this.meta(id); const keep = new Set(Object.entries(cur).filter(([k, m]) => m.project_id === proj.id).map(([k]) => k.split('/')[1]));
+          const dir = this.contentDir(id, 'mod'); const newest = [...keep].sort((a, b) => fs.statSync(path.join(dir, b)).mtimeMs - fs.statSync(path.join(dir, a)).mtimeMs)[0];
+          for (const f of old) if (f !== newest && U.exists(path.join(dir, f))) fs.rmSync(path.join(dir, f), { force: true });
+          fixed.push({ ...p, action: p.type === 'missing' ? 'installed' : 'updated', title: proj.title });
+        } else if (p.type === 'wrongmc') {
+          const files = idx[p.id] || []; files.forEach(x => this.disableFile(id, x.file));
+          if (!files.length) throw new Error('nofile'); fixed.push({ ...p, action: 'disabled' });
+        } else if (p.type === 'suspect') {
+          const files = idx[p.id] || []; if (!files.length) throw new Error('nofile');
+          // сперва пробуем обновить мод до версии, подходящей под сборку, иначе отключаем
+          let done = false; const proj = await this.findProject(p.id);
+          if (proj) { try { const list = await MR.versions(proj.id, { loaders: modLoaders(i.loader), game_versions: [i.mc] }); const best = list.length && MR.best(list); const cur = (this.meta(id)['mod/' + files[0].file.replace(/\.disabled$/, '')] || {}).version_id; if (best && best.id !== cur) { await this.installProject(id, proj.id, best.id); files.forEach(x => fs.rmSync(path.join(this.contentDir(id, 'mod'), x.file), { force: true })); done = true; fixed.push({ ...p, action: 'updated', title: proj.title }); } } catch (_) {} }
+          if (!done) { files.forEach(x => this.disableFile(id, x.file)); fixed.push({ ...p, action: 'disabled' }); }
+        } else if (p.type === 'dup') {
+          const seen = {}; const dir = this.contentDir(id, 'mod'); let n = 0;
+          for (const [mid, arr] of Object.entries(idx)) if (arr.length > 1) arr.slice().sort((a, b) => fs.statSync(path.join(dir, b.file)).mtimeMs - fs.statSync(path.join(dir, a.file)).mtimeMs).slice(1).forEach(x => { this.disableFile(id, x.file); n++; });
+          if (!n) throw new Error('none'); fixed.push({ ...p, action: 'disabled' });
+        } else if (p.type === 'oom') {
+          const cur = i.memory || this.store.settings.memory || 4096; const next = Math.min(Math.max(cur + 2048, 4096), Math.max(4096, Math.floor(U.totalMemMB() * 0.6)));
+          if (next <= cur) throw new Error('max'); const j = this.read(id); j.memory = next; this.write(j); fixed.push({ ...p, action: 'memory', value: next });
+        } else if (p.type === 'xmx') {
+          const j = this.read(id); j.memory = 2048; this.write(j); fixed.push({ ...p, action: 'memory', value: 2048 });
+        } else if (p.type === 'loader' || p.type === 'java') { failed.push(p); }
+      } catch (e) { failed.push({ ...p, error: e.message }); }
+    }
+    return { fixed, failed };
+  }
+  async fixCrash(id, problems) { const r = await this.fixProblems(id, problems); return r; }
+
+  // ---- версии мода (выбор вручную) ----
+  async modVersions(id, kind, file, all) {
+    const i = this.read(id); const meta = this.meta(id); const m = meta[kind + '/' + file.replace(/\.disabled$/, '')];
+    if (!m || !m.project_id) throw new Error('unknown');
+    const isMod = kind === 'mod';
+    if (String(m.project_id).startsWith('cf:')) {
+      const l = await CF.files(require('../config').siteUrl, m.project_id.slice(3), isMod && !all ? i.loader : '', all ? '' : i.mc);
+      return { project: m.project_id, current: m.version_id, mc: i.mc, versions: l.map(v => ({ id: v.id, name: v.name, number: v.name, type: 'release', mc: v.mc, loaders: v.loaders, date: v.date })) };
+    }
+    const list = await MR.versions(m.project_id, all ? {} : { loaders: isMod ? modLoaders(i.loader) : undefined, game_versions: [i.mc] });
+    return { project: m.project_id, current: m.version_id, mc: i.mc, versions: list.map(v => ({ id: v.id, name: v.name, number: v.version_number, type: v.version_type, mc: v.game_versions, loaders: v.loaders, date: v.date_published })) };
+  }
+  async setModVersion(id, kind, file, versionId) {
+    const meta = this.meta(id); const key = kind + '/' + file.replace(/\.disabled$/, ''); const m = meta[key];
+    if (!m || !m.project_id) throw new Error('unknown');
+    const wasOff = file.endsWith('.disabled'); const dir = this.contentDir(id, kind);
+    if (String(m.project_id).startsWith('cf:')) {
+      const lst = await CF.files(require('../config').siteUrl, m.project_id.slice(3), '', ''); const fv = lst.find(x => x.id === String(versionId)); if (!fv) throw new Error('unknown');
+      await this.installCurseforge(id, m.project_id.slice(3), versionId, { title: m.title, icon: m.icon, type: kind });
+      if (fv.file !== file.replace(/\.disabled$/, '')) { fs.rmSync(path.join(dir, file), { force: true }); const mm = this.meta(id); delete mm[key]; this.saveMeta(id, mm); }
+      return true;
+    }
+    const v = await MR.version(versionId); const nf = MR.primaryFile(v).filename;
+    await this.installProject(id, m.project_id, versionId);
+    if (nf !== file.replace(/\.disabled$/, '')) { fs.rmSync(path.join(dir, file), { force: true }); const mm = this.meta(id); delete mm[key]; this.saveMeta(id, mm); }
+    if (wasOff && U.exists(path.join(dir, nf))) fs.renameSync(path.join(dir, nf), path.join(dir, nf + '.disabled'));
+    return true;
+  }
 
   // ---- контент ----
   contentDir(id, kind) { return path.join(this.game(id), FOLDERS[kind] || 'mods'); }
@@ -108,7 +207,7 @@ class Instances {
       } catch (_) {}
     }
     this.saveMeta(id, meta);
-    return rows.map(r => ({ file: r.file, enabled: r.enabled, size: r.size, title: r.m.title || r.file.replace(/\.(jar|zip|disabled)/g, ''), icon: r.m.icon || '', version: r.m.version || '', known: !!r.m.project_id }))
+    return rows.map(r => ({ file: r.file, enabled: r.enabled, size: r.size, title: r.m.title || r.file.replace(/\.(jar|zip|disabled)/g, ''), icon: r.m.icon || '', version: r.m.version || '', known: !!r.m.project_id, pid: r.m.project_id || '' }))
       .sort((a, b) => a.title.localeCompare(b.title));
   }
   toggle(id, kind, file) {
@@ -142,6 +241,27 @@ class Instances {
       }
     }
     this.done(task); return installed;
+  }
+
+  // Установка из CurseForge (через API сайта)
+  async cfVersions(id, project, kind = 'mod') {
+    const i = this.read(id); const site = require('../config').siteUrl;
+    return CF.files(site, project, kind === 'mod' ? i.loader : '', i.mc);
+  }
+  async installCurseforge(id, project, fileId, meta = {}, _depth = 0) {
+    const i = this.read(id); const kind = meta.type || 'mod'; const list = await this.cfVersions(id, project, kind);
+    const f = fileId ? list.find(x => x.id === String(fileId)) : list.find(x => x.url);
+    if (!f || !f.url) throw new Error('incompatible:' + (meta.title || project));
+    const dest = path.join(this.contentDir(id, kind), f.file || (f.name + '.jar'));
+    this.emit('progress', { task: 'inst:cf' + project, label: meta.title || f.name, pct: 0.2 });
+    await U.download(f.url, dest, f.sha1 ? { sha1: f.sha1 } : {});
+    const m = this.meta(id); m[kind + '/' + path.basename(dest)] = { size: fs.statSync(dest).size, sha1: await U.sha1File(dest), looked: true, project_id: 'cf:' + project, version_id: 'cf:' + f.id, title: meta.title || f.name, icon: meta.icon || '', version: f.name }; this.saveMeta(id, m);
+    const installed = [meta.title || f.name];
+    if (kind === 'mod' && _depth < 2) {
+      const have = new Set(Object.values(this.meta(id)).map(x => x.project_id));
+      for (const d of f.deps || []) if (!have.has('cf:' + d)) { try { installed.push(...await this.installCurseforge(id, d, null, { title: 'CurseForge #' + d }, _depth + 1)); } catch (_) {} }
+    }
+    this.done('inst:cf' + project); return installed;
   }
 
   // ---- обновление сборки на новую версию ----

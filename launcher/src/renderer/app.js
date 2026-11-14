@@ -10,7 +10,7 @@ const P = {
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', folder: '<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
   download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>', refresh: '<path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"/>', bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>', check: '<path d="M5 12l5 5 9-10"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', back: '<path d="M15 5l-7 7 7 7"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
-  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', import: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', tag: '<path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/>', import: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24">${P[n]}</svg>`;
 
@@ -125,7 +125,7 @@ async function renderTab() {
     if (!$('#tabc')) return;
     $('#tabc').innerHTML = `<div class="row" style="margin-bottom:12px"><button class="btn sm p" data-addc>${ic('plus')}${esc(t('install'))}</button><span class="mu sm">${rows.length}</span></div>` +
       (rows.length ? rows.map(r => `<div class="card item ${r.enabled ? '' : 'off'}" style="padding:10px 14px">${r.icon ? `<img class="ico" src="${esc(r.icon)}" alt="">` : `<div class="ico"></div>`}<div class="grow"><b>${esc(r.title)}</b><div class="mu sm">${esc(r.version || r.file)}</div></div>
-      <button class="sw ${r.enabled ? 'on' : ''}" data-tg="${esc(r.file)}"></button><button class="btn ic bad" data-rm="${esc(r.file)}">${ic('trash')}</button></div>`).join('') : `<div class="card empty">${esc(t('empty'))}</div>`);
+      ${r.pid ? `<button class="btn sm" data-ver="${esc(r.file)}" title="${esc(t('pickVer'))}">${ic('tag')}${esc(t('pickVer'))}</button>` : ''}<button class="sw ${r.enabled ? 'on' : ''}" data-tg="${esc(r.file)}"></button><button class="btn ic bad" data-rm="${esc(r.file)}">${ic('trash')}</button></div>`).join('') : `<div class="card empty">${esc(t('empty'))}</div>`);
   } catch (e) { $('#tabc').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
 }
 
@@ -137,27 +137,33 @@ function viewDiscover() {
   V(`<div class="top"><h1>${esc(t('discover'))}</h1>${tg ? `<button class="btn sm" data-untarget>${esc(t('install'))}: <b>${esc(tg.name)}</b> ${ic('x')}</button>` : ''}</div>
   <div class="search">${ic('search')}<input id="q" type="search" placeholder="${esc(t('search'))}" value="${esc(c.q)}"><select id="cl"><option value="">${esc(t('loader'))}: ${esc(t('any'))}</option>${LOADERS.slice(1).map(l => `<option value="${l}" ${c.loader === l ? 'selected' : ''}>${LN[l]}</option>`).join('')}</select>
   <input id="cv" placeholder="1.21.1" size="7" value="${esc(c.version)}" style="width:96px"></div>
-  <div class="pill" style="margin:14px 0">${types.map(([k, n]) => `<button data-ctype="${k}" class="${c.type === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div><div id="res" style="display:grid;gap:10px"></div>`);
+  <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><span class="mu sm">${esc(t('srcLabel'))}</span><div class="pill">${[['modrinth', 'Modrinth'], ['curseforge', 'CurseForge']].map(([k, n]) => `<button data-src="${k}" class="${(c.src || 'modrinth') === k ? 'on' : ''}">${n}</button>`).join('')}</div>${c.src === 'curseforge' ? `<span class="mu sm">${esc(t('cfNote'))}</span>` : ''}</div>
+  <div class="pill" style="margin:14px 0">${types.filter(([k]) => !(c.src === 'curseforge' && k === 'modpack')).map(([k, n]) => `<button data-ctype="${k}" class="${c.type === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div><div id="res" style="display:grid;gap:10px"></div>`);
   const q = $('#q'); let tm; q.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { c.q = q.value; search(); }, 350); };
   $('#cl').onchange = e => { c.loader = e.target.value; search(); }; $('#cv').onchange = e => { c.version = e.target.value.trim(); search(); };
   if (c.res) drawRes(); else search();
 }
 async function search() {
   const c = S.catalog; $('#res').innerHTML = `<div class="mu">${esc(t('loading'))}</div>`;
-  try { c.res = (await api('cat:search', { query: c.q, type: c.type, loader: c.loader, version: c.version })).hits; drawRes(); }
+  try { c.res = (await api('cat:search', { query: c.q, type: c.type, loader: c.loader, version: c.version, src: c.src || 'modrinth' })).hits; drawRes(); }
   catch (e) { if ($('#res')) $('#res').innerHTML = `<div class="card empty">${esc(e.message)} <button class="btn sm" data-retry>${ic('refresh')}</button></div>`; }
 }
 function drawRes() {
   const r = $('#res'); if (!r) return;
   r.innerHTML = (S.catalog.res || []).map(h => `<div class="card item" data-proj="${esc(h.id)}" style="cursor:pointer"><img class="ico" src="${esc(h.icon || '')}" alt=""><div class="grow"><b>${esc(h.title)}</b> <span class="mu sm">· ${esc(h.author || '')}</span><div class="ds">${esc(h.desc)}</div><div class="mu sm">⬇ ${fmt(h.downloads)} ${(h.loaders || []).slice(0, 4).map(l => `<span class="tag">${esc(l)}</span>`).join(' ')}</div></div>
-  <button class="btn p sm" data-getp="${esc(h.id)}" data-ptype="${esc(h.type)}">${ic('download')}${esc(t('install'))}</button></div>`).join('') || `<div class="card empty">${esc(t('empty'))}</div>`;
+  <button class="btn p sm" data-getp="${esc(h.id)}" data-ptype="${esc(h.type)}" data-psrc="${esc(h.src || 'modrinth')}">${ic('download')}${esc(t('install'))}</button></div>`).join('') || `<div class="card empty">${esc(t('empty'))}</div>`;
 }
-async function installProject(id, type) {
+const doInstall = async (instId, id, src) => {
+  if (src === 'curseforge') { const h = (S.catalog.res || []).find(x => String(x.id) === String(id)) || {}; return api('inst:installCF', { id: instId, project: id, meta: { title: h.title, icon: h.icon, type: S.catalog.type } }); }
+  return api('inst:install', { id: instId, project: id });
+};
+async function installProject(id, type, src) {
+  S.pendingSrc = src || 'modrinth';
   await run(async () => {
     if (type === 'modpack') { const i = await api('inst:installModpack', { project: id }); await refresh(); toast(t('done') + ': ' + i.name, 'ok'); return go('inst', i.id); }
     const tg = S.target && inst(S.target);
     if (!tg) return pickInstanceModal(id);
-    const list = await api('inst:install', { id: tg.id, project: id }); toast(t('installed') + ': ' + list.join(', '), 'ok');
+    const list = await doInstall(tg.id, id, S.pendingSrc); toast(t('installed') + ': ' + list.join(', '), 'ok');
   });
 }
 function pickInstanceModal(projectId) {
@@ -166,7 +172,7 @@ function pickInstanceModal(projectId) {
   $('#modal').onclick = async e => {
     if (e.target.id === 'modal' || e.target.closest('[data-close]')) return closeModal();
     const b = e.target.closest('[data-pick]'); if (!b) return; closeModal();
-    await run(async () => { const l = await api('inst:install', { id: b.dataset.pick, project: projectId }); toast(t('installed') + ': ' + l.join(', '), 'ok'); });
+    await run(async () => { const l = await doInstall(b.dataset.pick, projectId, S.pendingSrc); toast(t('installed') + ': ' + l.join(', '), 'ok'); });
   };
 }
 
@@ -182,7 +188,12 @@ function viewSettings() {
   <h2>${esc(t('language'))}</h2><div class="langs">${LANG_LIST.map(([c, n]) => `<button class="${s.lang === c ? 'on' : ''}" data-lang="${c}">${esc(n)}</button>`).join('')}</div>
   <h2>${esc(t('general'))}</h2><div class="card"><label class="lab" style="margin-top:0">${esc(t('memory'))}: <b id="gm">${s.memory}</b></label><input type="range" id="gmr" min="1024" max="16384" step="512" value="${s.memory}">
    <label class="lab">${esc(t('jvmArgs'))}</label><input id="gj" style="width:100%" value="${esc(s.jvmArgs || '')}"><label class="lab">Java</label><input id="gjp" style="width:100%" placeholder="auto" value="${esc(s.javaPath || '')}"></div>
+  <div class="card" style="margin-top:12px"><div class="row" style="padding:4px 0"><div class="grow">${esc(t('autoFix'))}</div><button class="sw ${s.autoFix !== false ? 'on' : ''}" data-tgl="autoFix"></button></div>
+   <div class="row" style="padding:4px 0"><div class="grow">${esc(t('discord'))}</div><button class="sw ${s.discord !== false ? 'on' : ''}" data-tgl="discord"></button></div>
+   <label class="lab">${esc(t('discordId'))}</label><input id="gdi" style="width:100%" placeholder="1234567890123456789" value="${esc(s.discordClientId || '')}"></div>
+  <h2>${esc(t('launcher'))}</h2><div class="card"><div class="row"><div class="grow"><b>SA Launcher ${esc(S.version || '')}</b><div class="mu sm" id="lstat">${esc(S.lupd ? (S.lupd.available ? t('newVer') + ': ' + S.lupd.latest : t('upToDate')) : '')}</div></div><button class="btn p" data-launcher-upd>${ic('refresh')}${esc(t('updLauncher'))}</button></div></div>
   <h2>${esc(t('accounts'))}</h2><div id="accs" class="card">${accountsHTML()}</div>`);
+  $('#gdi').onchange = e => setS({ discordClientId: e.target.value.trim() });
   $('#gmr').oninput = e => { $('#gm').textContent = e.target.value; }; $('#gmr').onchange = e => setS({ memory: +e.target.value });
   $('#gj').onchange = e => setS({ jvmArgs: e.target.value }); $('#gjp').onchange = e => setS({ javaPath: e.target.value.trim() });
   $('#accc').oninput = e => { setS({ accent: e.target.value }); renderRail(); };
@@ -274,6 +285,38 @@ async function projectModal(id) {
   } catch (e) { closeModal(); fail(e); }
 }
 
+async function versionModal(file, all) {
+  const i = inst(S.instId); if (!i) return;
+  modal(`<h2>${ic('tag')} ${esc(t('pickVer'))}</h2><div class="mu">${esc(t('loading'))}</div>`);
+  let r; try { r = await api('inst:modVersions', { id: i.id, kind: S.tab === 'mods' ? 'mod' : S.tab, file, all: !!all }); } catch (e) { closeModal(); return fail(e); }
+  modal(`<h2>${ic('tag')} ${esc(t('pickVer'))} · Minecraft ${esc(i.mc)}</h2>
+  <label class="row sm mu" style="margin-bottom:8px"><button class="sw ${all ? 'on' : ''}" id="va"></button>${esc(t('allVer'))}</label>
+  <div style="max-height:52vh;overflow:auto;display:grid;gap:6px">${r.versions.map(v => `<button class="opt ${v.id === r.current ? 'on' : ''}" data-setv="${esc(v.id)}"><div class="grow"><b>${esc(v.number || v.name)}</b> <span class="tag">${esc(v.type || '')}</span><div class="mu sm">${esc((v.mc || []).slice(-4).join(', '))} · ${esc((v.loaders || []).join(', '))}</div></div>${v.id === r.current ? `<span class="tag">✓ ${esc(t('curVer'))}</span>` : ''}</button>`).join('') || `<div class="card empty">${esc(t('noCompat'))}</div>`}</div>
+  <div class="foot"><button class="btn" data-close>${esc(t('cancel'))}</button></div>`);
+  $('#va').onclick = () => versionModal(file, !all);
+  $$('[data-setv]').forEach(b => b.onclick = async () => { if (b.dataset.setv === r.current) return closeModal(); closeModal(); await run(async () => { await api('inst:setModVersion', { id: i.id, kind: S.tab === 'mods' ? 'mod' : S.tab, file, version: b.dataset.setv }); toast(t('versionSet'), 'ok'); renderTab(); }); });
+}
+function crashModal(d) {
+  const i = inst(d.id) || { name: '' };
+  const ttl = x => x.title || x.id;
+  const act = x => ({ installed: t('aInstalled'), updated: t('aUpdated'), disabled: t('aDisabled') }[x.action] || (x.action === 'memory' ? `${t('aMem')} ${x.value} MB` : x.action));
+  modal(`<h2>⚠ ${esc(t('crashT'))} — ${esc(i.name)}</h2>
+  ${d.fixed.length ? `<label class="lab" style="margin-top:0">✓ ${esc(t('crashFixed'))}</label>${d.fixed.map(x => `<div class="row sm" style="padding:3px 0">${ic('check')}${x.action === 'memory' ? '' : `<b>${esc(ttl(x))}</b> — `}${esc(act(x))}</div>`).join('')}` : ''}
+  ${d.failed.length ? `<label class="lab">${esc(t('crashNoFix'))}</label>${d.failed.map(x => `<div class="row sm mu" style="padding:3px 0">✕ ${esc(x.id)}${x.type ? ' (' + esc(x.type) + ')' : ''}</div>`).join('')}` : ''}
+  ${!d.problems.length ? `<p class="mu">${esc(t('crashNone'))}</p>` : ''}
+  <div class="foot"><button class="btn" data-close>${esc(t('cancel'))}</button>${d.fixed.length ? `<button class="btn p" data-fixplay="${esc(d.id)}">${ic('play')}${esc(t('fixAgain'))}</button>` : ''}</div>`);
+}
+async function updateLauncher() {
+  const st = $('#lstat'); if (st) st.textContent = t('checking');
+  await run(async () => {
+    const r = await api('launcher:check'); S.lupd = r;
+    if (st) st.textContent = r.available ? t('newVer') + ': ' + r.latest : t('upToDate');
+    if (!r.available) return toast(t('upToDate'), 'ok');
+    modal(`<h2>${ic('refresh')} ${esc(t('newVer'))}</h2><p class="mu">${esc(r.current)} → <b>${esc(r.latest)}</b></p><div class="foot"><button class="btn" data-close>${esc(t('cancel'))}</button><button class="btn p" id="lgo">${ic('download')}${esc(t('updLauncher'))}</button></div>`);
+    $('#lgo').onclick = async () => { $('#lgo').disabled = true; $('#lgo').textContent = t('loading'); await run(async () => { await api('launcher:update'); closeModal(); }); };
+  });
+}
+
 /* ---------- прогресс ---------- */
 function renderDock() {
   $('#dock').innerHTML = Object.entries(S.tasks).map(([k, v]) => `<div class="task"><b>${esc(v.label)}</b><div class="bar"><i style="width:${Math.round((v.pct || 0) * 100)}%"></i></div></div>`).join('');
@@ -304,8 +347,13 @@ document.addEventListener('click', async e => {
   if (q('[data-del]')) { if (confirm(t('confirmDel'))) return run(async () => { await api('inst:delete', S.instId); await refresh(); go('library'); }); return; }
   if ((b = q('[data-ctype]'))) { S.catalog.type = b.dataset.ctype; S.catalog.res = null; return viewDiscover(); }
   if (q('[data-retry]')) return search();
-  if ((b = q('[data-getp]'))) { e.stopPropagation(); const id = b.dataset.getp, ty = b.dataset.ptype; if ($('#modal') && !$('#modal').classList.contains('hide')) closeModal(); return installProject(id, ty); }
-  if ((b = q('[data-proj]'))) return projectModal(b.dataset.proj);
+  if ((b = q('[data-getp]'))) { e.stopPropagation(); const id = b.dataset.getp, ty = b.dataset.ptype; if ($('#modal') && !$('#modal').classList.contains('hide')) closeModal(); return installProject(id, ty, b.dataset.psrc); }
+  if ((b = q('[data-src]'))) { S.catalog.src = b.dataset.src; S.catalog.res = null; if (b.dataset.src === 'curseforge' && S.catalog.type === 'modpack') S.catalog.type = 'mod'; return viewDiscover(); }
+  if ((b = q('[data-proj]'))) { if ((S.catalog.src || 'modrinth') === 'curseforge' && S.view === 'discover') { const h = (S.catalog.res || []).find(x => String(x.id) === b.dataset.proj); return h && h.url ? api('shell:open', h.url) : null; } return projectModal(b.dataset.proj); }
+  if ((b = q('[data-ver]'))) return versionModal(b.dataset.ver);
+  if (q('[data-launcher-upd]')) return updateLauncher();
+  if ((b = q('[data-fixplay]'))) { closeModal(); return run(async () => { await api('inst:play', b.dataset.fixplay); }); }
+  if ((b = q('[data-tgl]'))) { const k = b.dataset.tgl; const v = !(S.settings[k] !== false); b.classList.toggle('on', !v); return setS({ [k]: !v }); }
   if ((b = q('[data-th]'))) { setS({ theme: b.dataset.th }); return viewSettings(); }
   if ((b = q('[data-acc-c]'))) { setS({ accent: b.dataset.accC }); renderRail(); return viewSettings(); }
   if ((b = q('[data-lang]'))) { setS({ lang: b.dataset.lang }); renderRail(); return renderView(); }
@@ -319,14 +367,16 @@ addEventListener('error', e => { if (e.target && e.target.tagName === 'IMG') e.t
 
 /* ---------- старт ---------- */
 (async function init() {
-  const info = await api('app:init'); Object.assign(S, { accounts: info.accounts, site: info.site });
+  const info = await api('app:init'); Object.assign(S, { accounts: info.accounts, site: info.site, version: info.version });
   Object.assign(S.settings, info.settings);
   if (!S.settings.lang) { const l = (info.locale || 'en').toLowerCase().slice(0, 2); S.settings.lang = LANGS[l] ? l : 'en'; api('settings:set', { lang: S.settings.lang }).catch(() => {}); }
   applyTheme(); await refresh(); renderRail(); renderView();
+  api('launcher:check').then(r => { S.lupd = r; if (r.available) toast(t('newVer') + ': ' + r.latest, 'ok'); }).catch(() => {});
   sa.on((ch, d) => {
     if (ch === 'progress') { if (d.done) delete S.tasks[d.task]; else S.tasks[d.task] = d; renderDock(); }
     else if (ch === 'log') { const a = S.logs[d.id] || (S.logs[d.id] = []); a.push(d.line); if (a.length > 600) a.splice(0, 100); if (S.view === 'inst' && S.tab === 'logs' && S.instId === d.id) { const b = $('#logbox'); if (b) { b.textContent += (b.textContent ? '\n' : '') + d.line; b.scrollTop = b.scrollHeight; } } }
     else if (ch === 'state') { const i = inst(d.id); if (i) i.running = d.running; if (S.view === 'library' || S.view === 'home') renderView(); if (S.view === 'inst' && S.instId === d.id) viewInst(); if (!d.running && d.code && d.code !== 0) toast(`${t('error')}: exit ${d.code}`, 'err'); }
+    else if (ch === 'crash') { if (d.problems.length || true) crashModal(d); }
     else if (ch === 'error') toast(d.message, 'err');
   });
 })().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="color:#f87171;position:fixed;inset:60px 20px;z-index:99">${esc(e.stack || e)}</pre>`); });
