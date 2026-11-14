@@ -1,16 +1,15 @@
 
-; SA Launcher - Custom NSIS installer page
+; SA Launcher - Custom NSIS installer
 ; Desktop shortcut selection
 
 !ifndef BUILD_UNINSTALLER
 
-!macro customHeader
-  !include "nsDialogs.nsh"
-  !include "LogicLib.nsh"
+; IMPORTANT: These must be declared before assistedInstaller.nsh
+!include "nsDialogs.nsh"
+!include "LogicLib.nsh"
 
-  Var SA_ScCheck
-  Var SA_ScState
-!macroend
+Var SA_ScCheck
+Var SA_ScState
 
 !macro customInit
   StrCpy $SA_ScState 1
@@ -82,9 +81,7 @@
 !endif
 
 !macro customUnInstall
-
   ${ifNot} ${isUpdated}
     Delete "$DESKTOP\${SHORTCUT_NAME}.lnk"
   ${endIf}
-
 !macroend
