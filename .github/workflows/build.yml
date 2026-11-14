@@ -1,0 +1,52 @@
+name: Build SA Launcher
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            cmd: npx electron-builder --win --x64 --publish never
+            files: launcher/dist/*.exe
+          - os: macos-latest
+            cmd: npx electron-builder --mac --publish never
+            files: launcher/dist/*.dmg
+          - os: ubuntu-latest
+            cmd: npx electron-builder --linux --publish never
+            files: launcher/dist/*.AppImage
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: launcher
+        run: npm install
+      - name: Set site URL
+        if: ${{ vars.SA_SITE != '' }}
+        working-directory: launcher
+        env:
+          SA_SITE: ${{ vars.SA_SITE }}
+        run: node -e "const f=require('fs'),p=JSON.parse(f.readFileSync('package.json'));p.saSite=process.env.SA_SITE;f.writeFileSync('package.json',JSON.stringify(p,null,2))"
+      - name: Build
+        working-directory: launcher
+        run: ${{ matrix.cmd }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sa-launcher-${{ matrix.os }}
+          path: ${{ matrix.files }}
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}
