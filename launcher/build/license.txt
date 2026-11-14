@@ -1,0 +1,11 @@
+﻿SA LAUNCHER — END USER LICENSE AGREEMENT
+
+1. Grant. SA Launcher ("the Software") is provided free of charge for personal, non-commercial use. You may install and use it on your devices.
+2. Restrictions. You may not sell, sublicense or redistribute modified copies of the Software under the SA Launcher name, nor remove copyright notices.
+3. Not affiliated with Mojang or Microsoft. SA Launcher is an unofficial third-party tool. Minecraft is a trademark of Mojang AB / Microsoft. You must own a legitimate copy of Minecraft Java Edition to play with a Microsoft account. Ely.by accounts are provided by a third-party service under its own terms.
+4. Accounts and privacy. Sign-in happens on the SA Launcher website through Microsoft or Ely.by. The Software never sees your password. Access tokens are stored on your device, encrypted by your operating system where possible.
+5. Third-party content. Mods, resource packs and shaders are downloaded from Modrinth and other sources and are governed by their authors' licenses. SA Launcher is not responsible for third-party content.
+6. No warranty. The Software is provided "AS IS", without warranty of any kind. Back up your worlds before updating game versions or mods. The authors are not liable for any damage or data loss.
+7. Termination. This license ends automatically if you violate it. You can stop at any time by uninstalling the Software.
+
+By clicking "I Agree" you accept these terms.
