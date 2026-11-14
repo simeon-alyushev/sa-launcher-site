@@ -121,6 +121,16 @@ async function download(os, env) {
   return html('Сборка для ' + os + ' пока не загружена. Попробуйте позже.', false, 404);
 }
 
+// Последняя версия лаунчера (для кнопки «Обновить лаунчер»)
+async function launcherInfo(env) {
+  const repo = env.GITHUB_REPO || 'simeon-alyushev/sa-launcher-site';
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { 'User-Agent': UA, Accept: 'application/vnd.github+json', ...(env.GITHUB_TOKEN ? { Authorization: 'Bearer ' + env.GITHUB_TOKEN } : {}) }, cf: { cacheTtl: 120, cacheEverything: true } });
+    if (r.ok) { const d = await r.json(); return json({ version: String(d.tag_name || '').replace(/^v/i, ''), notes: String(d.body || '').slice(0, 800) }); }
+  } catch (_) {}
+  return json({ version: '' }, 404);
+}
+
 const CF = { mod: 6, modpack: 4471, resourcepack: 12, shader: 6552 }, LD = { forge: 1, fabric: 4, quilt: 5, neoforge: 6 };
 async function search(u, env) {
   const g = k => u.searchParams.get(k) || '', q = g('q'), t = CF[g('type')] ? g('type') : 'mod', l = g('loader'), v = g('version');
@@ -154,7 +164,7 @@ async function versions(u, env) {
     if (LD[l]) p.set('modLoaderType', LD[l]);
     const r = await fetch(`https://api.curseforge.com/v1/mods/${id}/files?` + p, { headers: { 'x-api-key': env.CF_API_KEY } });
     if (!r.ok) return json({ error: 'CurseForge error ' + r.status }, 502);
-    return json({ versions: (await r.json()).data.map(f => ({ name: f.displayName, mc: f.gameVersions.filter(x => /^\d/.test(x)), loaders: f.gameVersions.filter(x => !/^\d/.test(x)), url: /^https:\/\//.test(f.downloadUrl || '') ? f.downloadUrl : '' })) });
+    return json({ versions: (await r.json()).data.map(f => ({ id: String(f.id), name: f.displayName, file: f.fileName, date: f.fileDate, mc: f.gameVersions.filter(x => /^\d/.test(x)), loaders: f.gameVersions.filter(x => !/^\d/.test(x)).map(x => x.toLowerCase()), deps: (f.dependencies || []).filter(d => d.relationType === 3).map(d => String(d.modId)), sha1: ((f.hashes || []).find(h => h.algo === 1) || {}).value || '', url: /^https:\/\//.test(f.downloadUrl || '') ? f.downloadUrl : `https://edge.forgecdn.net/files/${Math.floor(f.id / 1000)}/${f.id % 1000}/${encodeURIComponent(f.fileName)}` })) });
   }
   const p = new URLSearchParams();
   if (l) p.set('loaders', JSON.stringify([l]));
@@ -188,6 +198,7 @@ export default {
     if (path === '/api/logout' && req.method === 'POST') return logout(req, env);
     if (path === '/api/versions') return versions(u, env);
     if (path === '/api/search') return search(u, env);
+    if (path === '/api/launcher') return launcherInfo(env);
     return env.ASSETS.fetch(req);
   }
 };
