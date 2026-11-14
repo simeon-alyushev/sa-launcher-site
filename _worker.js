@@ -1,5 +1,5 @@
 // SA Launcher backend (Cloudflare Pages advanced mode)
-// Env vars: ELY_CLIENT_ID, ELY_CLIENT_SECRET, MS_CLIENT_ID, MS_CLIENT_SECRET, SESSION_SECRET,
+// Env vars: MS_CLIENT_ID, MS_CLIENT_SECRET, SESSION_SECRET,
 //           GITHUB_REPO (owner/repo с релизами лаунчера), CF_API_KEY (optional), GITHUB_TOKEN (optional, для приватного репо)
 const UA = 'SimeonAlyushev/SALauncher/0.1.0 (simeon.alyushev@gmail.com)';
 const enc = new TextEncoder(), dec = new TextDecoder();
@@ -30,23 +30,17 @@ async function msChain(msAccess) {
   try { mc = await post('https://api.minecraftservices.com/authentication/login_with_xbox', { identityToken: `XBL3.0 x=${xsts.DisplayClaims.xui[0].uhs};${xsts.Token}` }); }
   catch (e) {
     const m = (e.data && (e.data.errorMessage || e.data.error)) || '';
-    if (e.status === 403 || /app registration/i.test(m)) throw new Error('[minecraft-login] HTTP ' + e.status + ': Mojang отклонил Application (client) ID вашего Azure-приложения (' + (m || 'Invalid app registration') + '). Его нужно добавить в список разрешённых: aka.ms/mce-reviewappid. Пока можно войти через Ely.by.');
+    if (e.status === 403 || /app registration/i.test(m)) throw new Error('[minecraft-login] HTTP ' + e.status + ': Mojang отклонил Application (client) ID вашего Azure-приложения (' + (m || 'Invalid app registration') + '). Его нужно добавить в список разрешённых: aka.ms/mce-reviewappid.');
     throw new Error('[minecraft-login] HTTP ' + e.status + (m ? ': ' + m : ''));
   }
   const H = { Authorization: 'Bearer ' + mc.access_token };
   const pr = await fetch('https://api.minecraftservices.com/minecraft/profile', { headers: H });
-  if (!pr.ok) throw new Error('На этом аккаунте нет лицензии Minecraft Java Edition (профиль не найден, HTTP ' + pr.status + '). Войдите через Ely.by.');
+  if (!pr.ok) throw new Error('На этом аккаунте нет лицензии Minecraft Java Edition (профиль не найден, HTTP ' + pr.status + ').');
   const prof = await pr.json();
   return { p: 'ms', id: prof.id, name: prof.name, accessToken: mc.access_token, expiresAt: Date.now() + (mc.expires_in || 86400) * 1000, skin: 'https://crafatar.com/skins/' + prof.id };
 }
 
 const P = {
-  ely: {
-    auth: 'https://account.ely.by/oauth2/v1', tok: 'https://account.ely.by/api/oauth2/v1/token', scope: 'account_info', lscope: 'account_info minecraft_server_session offline_access',
-    id: e => e.ELY_CLIENT_ID, sec: e => e.ELY_CLIENT_SECRET,
-    me: async t => { const r = await get('https://account.ely.by/api/account/v1/info', t.access_token); return { id: String(r.id), name: r.username, uuid: String(r.uuid || '').replace(/-/g, '') }; },
-    pack: async (t, me) => ({ p: 'ely', id: me.uuid, name: me.name, accessToken: t.access_token, refreshToken: t.refresh_token, expiresAt: Date.now() + (t.expires_in || 3600) * 1000, skin: 'https://skinsystem.ely.by/skins/' + encodeURIComponent(me.name) + '.png' })
-  },
   microsoft: {
     auth: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize', tok: 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token',
     scope: 'openid profile', lscope: 'openid profile offline_access XboxLive.signin', id: e => e.MS_CLIENT_ID, sec: e => e.MS_CLIENT_SECRET,
@@ -61,7 +55,7 @@ async function getLink(req, env) { const l = await verify(env, ck(req, 'lk')); r
 
 async function auth(req, env, u, name, start) {
   const p = P[name], ru = u.origin + '/auth/' + name;
-  const need = { [name === 'ely' ? 'ELY_CLIENT_ID' : 'MS_CLIENT_ID']: p.id(env), [name === 'ely' ? 'ELY_CLIENT_SECRET' : 'MS_CLIENT_SECRET']: p.sec(env), SESSION_SECRET: env.SESSION_SECRET };
+  const need = { MS_CLIENT_ID: p.id(env), MS_CLIENT_SECRET: p.sec(env), SESSION_SECRET: env.SESSION_SECRET };
   const miss = Object.keys(need).filter(k => !need[k]);
   if (miss.length) return new Response('Provider is not configured. Missing variables: ' + miss.join(', '), { status: 503 });
   const link = await getLink(req, env);
@@ -108,13 +102,13 @@ async function launcherLogin(u, env) {
 }
 async function refresh(req, env) {
   let b; try { b = await req.json(); } catch { return json({ error: 'bad request' }, 400); }
-  const name = b.p === 'ely' ? 'ely' : b.p === 'ms' ? 'microsoft' : null, p = name && P[name];
+  const name = b.p === 'ms' ? 'microsoft' : null, p = name && P[name];
   if (!p || !b.refreshToken || !p.id(env)) return json({ error: 'bad request' }, 400);
   try {
     const t = await (await fetch(p.tok, { method: 'POST', body: new URLSearchParams({ grant_type: 'refresh_token', client_id: p.id(env), client_secret: p.sec(env), refresh_token: b.refreshToken, scope: p.lscope }) })).json();
     if (!t.access_token) return json({ error: t.error_description || t.error || 'refresh failed' }, 401);
     if (!t.refresh_token) t.refresh_token = b.refreshToken;
-    return json({ account: await p.pack(t, name === 'ely' ? await p.me(t) : null) });
+    return json({ account: await p.pack(t, null) });
   } catch (e) { return json({ error: e.message }, 401); }
 }
 
@@ -198,7 +192,7 @@ async function logout(req, env) {
 
 export default {
   async fetch(req, env) {
-    const u = new URL(req.url), path = u.pathname, m = path.match(/^\/auth\/(ely|microsoft)(\/start)?$/);
+    const u = new URL(req.url), path = u.pathname, m = path.match(/^\/auth\/(microsoft)(\/start)?$/);
     if (m) return auth(req, env, u, m[1], !!m[2]);
     const d = path.match(/^\/download\/(windows|macos|linux)\/?$/);
     if (d) return download(d[1], env);
