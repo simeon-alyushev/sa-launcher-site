@@ -31,6 +31,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Verify project files (shows exactly what is missing)
+        shell: bash
+        run: |
+          missing=0
+          for f in launcher/package.json launcher/src/preload.js launcher/src/main/main.js launcher/src/main/config.js \
+            launcher/src/main/core/{auth,crash,curseforge,discord,instances,java,loaders,mc,modrinth,nbt,store,updater,util}.js \
+            launcher/src/renderer/{app,fx,i18n}.js launcher/src/renderer/{index.html,logo.png,styles.css} \
+            launcher/build/icon.png launcher/build/installer.nsh launcher/build/license.txt; do
+            [ -f "$f" ] || { echo "::error::MISSING FILE $f"; missing=1; }
+          done
+          echo "--- launcher/"; ls -la launcher
+          echo "--- launcher/src/main/core"; ls launcher/src/main/core 2>&1 || true
+          [ "$missing" = 0 ] || exit 1
       - name: Install
         working-directory: launcher
         run: npm install
