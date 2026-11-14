@@ -1,0 +1,80 @@
+{
+  "name": "sa-launcher",
+  "productName": "SA Launcher",
+  "version": "1.0.0",
+  "description": "SA Launcher — лаунчер Minecraft со сборками, каталогом Modrinth и входом через Microsoft / Ely.by",
+  "author": "Simeon Alyushev",
+  "license": "UNLICENSED",
+  "saSite": "https://sa-launcher.pages.dev",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "check": "node scripts/check.js"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.sa-launcher",
+    "productName": "SA Launcher",
+    "copyright": "© 2026 SA Launcher",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SA Launcher",
+      "license": "build/license.txt",
+      "multiLanguageInstaller": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
+      "artifactName": "SA-Launcher-Setup-${version}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "SA-Launcher-${version}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "SA-Launcher-${version}.${ext}"
+    }
+  }
+}

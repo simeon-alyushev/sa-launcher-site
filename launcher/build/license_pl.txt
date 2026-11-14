@@ -1,0 +1,11 @@
+﻿UMOWA LICENCYJNA SA LAUNCHER
+
+1. Licencja. SA Launcher („Program”) jest udostępniany bezpłatnie do osobistego, niekomercyjnego użytku. Możesz go instalować i używać na swoich urządzeniach.
+2. Ograniczenia. Zabrania się sprzedaży, sublicencjonowania i dystrybucji zmodyfikowanych kopii Programu pod nazwą SA Launcher oraz usuwania informacji o prawach autorskich.
+3. Brak powiązania z Mojang i Microsoft. SA Launcher jest nieoficjalnym narzędziem. Minecraft jest znakiem towarowym Mojang AB / Microsoft. Do gry z kontem Microsoft wymagana jest legalna kopia Minecraft Java Edition. Konta Ely.by zapewnia zewnętrzny serwis na własnych zasadach.
+4. Konta i prywatność. Logowanie odbywa się na stronie SA Launcher przez Microsoft lub Ely.by. Program nie widzi Twojego hasła. Tokeny są przechowywane na Twoim urządzeniu i w miarę możliwości szyfrowane przez system.
+5. Treści zewnętrzne. Mody, paczki zasobów i shadery pochodzą z Modrinth i innych źródeł i podlegają licencjom ich autorów.
+6. Brak gwarancji. Program jest dostarczany „takim, jakim jest”. Przed aktualizacją wersji gry lub modów wykonaj kopię światów. Autorzy nie odpowiadają za szkody ani utratę danych.
+7. Wygaśnięcie. Licencja wygasa automatycznie w razie naruszenia warunków. Możesz zrezygnować w każdej chwili, odinstalowując Program.
+
+Klikając „Akceptuję”, zgadzasz się na te warunki.
