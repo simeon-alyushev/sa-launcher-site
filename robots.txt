@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /auth/
+Disallow: /api/
+Disallow: /launcher/
+
+Sitemap: https://sa-launcher.pages.dev/sitemap.xml
