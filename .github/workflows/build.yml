@@ -36,7 +36,7 @@ jobs:
         run: |
           missing=0
           for f in launcher/package.json launcher/src/preload.js launcher/src/main/main.js launcher/src/main/config.js \
-            launcher/src/main/core/{auth,crash,curseforge,discord,instances,java,loaders,mc,modrinth,nbt,store,updater,util}.js \
+            launcher/src/main/core/{auth,crash,curseforge,deeplink,discord,instances,java,loaders,mc,modrinth,nbt,store,updater,util}.js \
             launcher/src/renderer/{app,fx,i18n}.js launcher/src/renderer/{index.html,logo.png,styles.css} \
             launcher/build/icon.png launcher/build/installer.nsh launcher/build/license.txt; do
             [ -f "$f" ] || { echo "::error::MISSING FILE $f"; missing=1; }
