@@ -173,7 +173,7 @@ async function versions(u, env) {
   if (v) p.set('game_versions', JSON.stringify([v]));
   const r = await fetch(`https://api.modrinth.com/v2/project/${id}/version?` + p, { headers: { 'User-Agent': UA } });
   if (!r.ok) return json({ error: 'Modrinth error ' + r.status }, 502);
-  return json({ versions: (await r.json()).slice(0, 25).map(x => { const f = x.files.find(f => f.primary) || x.files[0]; return { name: x.name || x.version_number, mc: x.game_versions, loaders: x.loaders, url: f && /^https:\/\/cdn\.modrinth\.com\//.test(f.url) ? f.url : '' }; }) });
+  return json({ versions: (await r.json()).slice(0, 25).map(x => { const f = x.files.find(f => f.primary) || x.files[0]; return { id: String(x.id), name: x.name || x.version_number, mc: x.game_versions, loaders: x.loaders, url: f && /^https:\/\/cdn\.modrinth\.com\//.test(f.url) ? f.url : '' }; }) });
 }
 
 // Выход: с телом {p,id} — только из этого аккаунта, без тела («Выйти из всех») — из всех.
