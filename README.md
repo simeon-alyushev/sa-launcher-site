@@ -1,4 +1,83 @@
-# SA Launcher site
-Files: `index.html` (frontend) and `_worker.js` (backend). Deploy through Git integration (Cloudflare Pages), no build command, output directory `/`.
-Variables (Settings -> Variables and Secrets): MS_CLIENT_ID, MS_CLIENT_SECRET, SESSION_SECRET (long random), CF_API_KEY (optional).
-deploy
+# SA Launcher
+
+Проект из двух частей:
+
+| Папка | Что это |
+|---|---|
+| `server/` | Сайт (ваш `index.html`) + API: вход через Microsoft, связка «сайт ↔ лаунчер», каталог, кнопки скачивания. Без зависимостей, нужен только Node 18+. |
+| `launcher/` | Сам лаунчер (Electron): сборки как в Prism, каталог Modrinth, 20 языков, темы (тёмная, светлая, AMOLED, жидкое стекло, своя), установщик с лицензией. |
+
+## Как работает вход
+1. В лаунчере «Войти» → открывается браузер на `https://ВАШ-САЙТ/launcher/login?code=…`
+2. На сайте выбираете Microsoft (лицензия).
+3. Сайт отдаёт аккаунт лаунчеру по одноразовому коду — лаунчер сам его забирает. Пароль никто не видит.
+
+## 1. Запуск сайта
+```bash
+cd server
+cp .env.example .env      # заполните (см. ниже)
+node server.js            # http://localhost:3000
+```
+На хостинге: любой VPS / Render / Railway / Fly.io с Node 18+, команда запуска `node server.js`, HTTPS обязателен (его даёт сам хостинг или nginx/Caddy).
+
+### Ключи входа
+**Microsoft** (https://portal.azure.com → Microsoft Entra ID → App registrations → New registration):
+- Supported account types: *Personal Microsoft accounts only*
+- Redirect URI (Web): `https://ВАШ-САЙТ/auth/microsoft/callback`
+- Certificates & secrets → New client secret → в `.env`: `MS_CLIENT_ID`, `MS_CLIENT_SECRET`
+- ⚠️ Mojang требует одобрения приложения для Minecraft API: заполните форму https://aka.ms/mce-reviewappid (на время проверки вход может отвечать ошибкой `invalid_app`/403).
+
+
+## 2. Сборка лаунчера (.exe)
+1. Откройте `launcher/package.json` и поставьте свой адрес в `"saSite"`.
+2. Нужен Node 18+ на **Windows** (для .exe):
+```bash
+cd launcher
+npm install
+npm start          # проверка без установки
+npm run dist       # готово: launcher/dist/SA-Launcher-Setup-1.0.0.exe
+```
+Установщик спросит: язык → лицензионное соглашение → папку установки → ярлык на рабочем столе → установка.
+
+### Без Windows — через GitHub (бесплатно)
+1. Загрузите папку проекта в репозиторий GitHub.
+2. Settings → Secrets and variables → Actions → **Variables** → `SA_SITE` = адрес вашего сайта.
+3. `git tag v1.0.0 && git push --tags` (или Actions → *Build SA Launcher* → Run workflow).
+4. Через несколько минут в **Releases** появятся `.exe`, `.dmg`, `.AppImage`.
+
+## 3. Как выложить скачивание на сайт
+Кнопки сайта ведут на `/download/windows|macos|linux`. Сервер отдаёт файл одним из двух способов:
+- **Вариант А — GitHub Releases:** в `.env` пропишите `GITHUB_REPO=ваш-ник/репозиторий`. Новый релиз появится на сайте сам (кэш 5 минут).
+- **Вариант Б — свои файлы:** положите `.exe` / `.dmg` / `.AppImage` в `server/releases/`. Берётся самый новый.
+
+## Что готово и что проверить
+- ✅ Проверено: синтаксис, 20 языков × 73 строки, интерфейс (скриншоты во всех темах), сервер (ссылка входа, связка с лаунчером, скачивание, защита путей), разбор ZIP/библиотек/аргументов.
+- ⚠️ Не проверено на реальных серверах (в среде разработки не было интернета): вход Microsoft, скачивание игры, запуск Minecraft, Forge/NeoForge, NSIS-установщик. Первую сборку обязательно прогоните: войти → создать сборку Fabric → играть.
+- Иконка сейчас увеличена из вашего 128×128 — для чёткости замените `launcher/build/icon.png` на 512×512.
+- macOS/Linux-сборки без подписи: macOS покажет предупреждение Gatekeeper. Для Windows без сертификата будет SmartScreen («Неизвестный издатель») — лечится покупкой сертификата подписи кода.
+- Автообновление самого лаунчера пока нет (новая версия = новый установщик на сайте).
+
+## Что умеет лаунчер
+- Сборки (Vanilla, Fabric, Quilt, Forge, NeoForge), импорт `.mrpack`, установка модпаков из Modrinth.
+- Каталог Modrinth: моды, шейдеры, ресурспаки, модпаки; зависимости ставятся сами.
+- **Обновить сборку:** лаунчер проверяет 8 новейших версий Minecraft, показывает «N из M модов совместимо», для несовместимых предлагает **убрать и обновить** или **остаться на текущей версии**. Перед обновлением копия модов сохраняется.
+- **Оптимизировать:** ставит Sodium, Sodium Extra, Lithium, Better Block Entities, Entity Culling, ImmediatelyFast, Smart Particles, FerriteCore, ModernFix, Iris, Voxy, Chunky и GGTU под вашу версию и загрузчик (что не подходит — пропускает), настраивает память и флаги Java. Список — `OPT_MODS` в `launcher/src/main/core/instances.js`.
+- **Темы:** тёмная, светлая, AMOLED, жидкое стекло, **Снег, Солнце, Листопад, Дождь** (анимированный фон как на сайте), своя. Акцентный цвет — пресеты, пипетка и ползунок оттенка.
+- Java скачивается автоматически (тот же рантайм, что у официального лаунчера).
+
+## Что нового в 1.1.0
+- Выбор версии любого мода (кнопка «Выбрать версию» у мода в сборке; Modrinth и CurseForge).
+- Авто-починка вылетов из-за модов (`core/crash.js`): ставит недостающий/нужный мод, обновляет, отключает конфликтные, добавляет память.
+- CurseForge в каталоге (нужна переменная `CF_API_KEY` в Cloudflare Pages).
+- Кнопка «Обновить лаунчер» (Настройки) — берёт последний GitHub Release через `/api/launcher`.
+- Discord Rich Presence: вставьте Application ID в `launcher/package.json` → `discordClientId` (или в Настройках). Картинку `logo` загрузите в Rich Presence Assets приложения Discord.
+- Исправлено: лаунчер не открывался после закрытия.
+
+## 1.2.0
+Миры и серверы на главной (быстрый вход), фото сборки, расширенные настройки сборки и лаунчера, страницы в каталоге, выбор версии при установке, серые «недоступные» сборки, цвета акцента как на сайте + свой, новая иконка настроек.
+
+## 1.4.0
+Играть можно только с лицензионным аккаунтом Microsoft: перед каждым запуском лаунчер проверяет профиль в Minecraft Services. Без сети запуск разрешён, только если лицензия подтверждалась в последние 7 дней. Аккаунты других типов удаляются при старте.
+
+## 1.5.0 — «Установить в SA Launcher»
+Ссылки `salauncher://install?src=modrinth|curseforge&project=<id>&version=<id>&type=mod|resourcepack|shader|modpack` открывают лаунчер и предлагают установить проект: окно подтверждения → выбор сборки (несовместимые серые) → выбор версии (запрошенная — первой). На сайте в каталоге у каждого проекта есть кнопка «Открыть в SA Launcher». Ссылка считается недоверенной: `src`, `type` и идентификаторы проверяются по строгому формату, загрузка идёт только с Modrinth/CurseForge, ничего не запускается. Сборки (modpack) поддерживаются только для Modrinth.
