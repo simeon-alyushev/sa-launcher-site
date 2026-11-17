@@ -10,8 +10,11 @@ function parse(raw) {
     if (typeof raw !== 'string' || raw.length > 400) return null;
     const u = new URL(raw);
     if (u.protocol !== 'salauncher:') return null;
-    if ((u.hostname || '').toLowerCase() !== 'install') return null;
+    const host = (u.hostname || '').toLowerCase();
     const g = k => u.searchParams.get(k);
+    // salauncher://build?id=vanilla-sa — открыть сборку SA (окно подтверждения покажет лаунчер)
+    if (host === 'build') { const id = (g('id') || '').toLowerCase(); return /^[a-z0-9-]{1,40}$/.test(id) ? { kind: 'build', id } : null; }
+    if (host !== 'install') return null;
     const src = (g('src') || '').toLowerCase(), type = (g('type') || 'mod').toLowerCase();
     const project = g('project'), version = g('version');
     if (!SRC.includes(src) || !TYPES.includes(type) || !ID.test(project || '')) return null;
