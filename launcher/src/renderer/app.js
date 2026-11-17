@@ -226,7 +226,8 @@ async function installProject(id, type, src) {
 }
 // Deep link salauncher://install: подтверждение -> выбор сборки -> выбор версии (с предвыбранной запрошенной)
 async function deepLink(l) {
-  if (!l) return; S.pendingVer = l.version || ''; S.pendingSrc = l.src; S.pendingKind = l.type;
+  if (!l) return;
+  if (l.kind === 'build') { go('builds'); if (!S.builds) { try { S.builds = await api('build:list'); } catch (e) { return fail(e); } } if (!(S.builds || []).some(b => b.id === l.id)) return toast(t('dlBad'), 'err'); return buildModal(l.id); } S.pendingVer = l.version || ''; S.pendingSrc = l.src; S.pendingKind = l.type;
   modal(`<div class="mu">${esc(t('loading'))}</div>`);
   let p = null;
   if (l.src === 'modrinth') { try { p = await api('cat:project', l.project); } catch (e) { closeModal(); return fail(e); } if (p.project_type !== l.type) { closeModal(); return toast(t('dlBad'), 'err'); } }
