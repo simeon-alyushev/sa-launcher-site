@@ -86,8 +86,27 @@ function extractZip(buf, dest, filter = () => true, strip = '') {
   }
 }
 
+// ---- ZIP (запись, для экспорта .mrpack) ----
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = buf => { let c = 0xffffffff; for (let i = 0; i < buf.length; i++) c = CRC[(c ^ buf[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+function writeZip(entries) {   // entries: [{ name, data: Buffer }]
+  const parts = [], cd = []; let off = 0;
+  for (const e of entries) {
+    const name = Buffer.from(e.name, 'utf8'), raw = e.data, def = zlib.deflateRawSync(raw), useDef = def.length < raw.length, body = useDef ? def : raw, crc = crc32(raw);
+    const h = Buffer.alloc(30); h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt16LE(0x0800, 6); h.writeUInt16LE(useDef ? 8 : 0, 8); h.writeUInt32LE(0x21000000 >>> 0, 10);
+    h.writeUInt32LE(crc, 14); h.writeUInt32LE(body.length, 18); h.writeUInt32LE(raw.length, 22); h.writeUInt16LE(name.length, 26);
+    parts.push(h, name, body);
+    const c = Buffer.alloc(46); c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(0x0800, 8); c.writeUInt16LE(useDef ? 8 : 0, 10); c.writeUInt32LE(0x21000000 >>> 0, 12);
+    c.writeUInt32LE(crc, 16); c.writeUInt32LE(body.length, 20); c.writeUInt32LE(raw.length, 24); c.writeUInt16LE(name.length, 28); c.writeUInt32LE(off, 42);
+    cd.push(c, name); off += 30 + name.length + body.length;
+  }
+  const cdBuf = Buffer.concat(cd), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(entries.length, 8); end.writeUInt16LE(entries.length, 10); end.writeUInt32LE(cdBuf.length, 12); end.writeUInt32LE(off, 16);
+  return Buffer.concat([...parts, cdBuf, end]);
+}
+
 const slug = s => String(s).toLowerCase().replace(/[^a-z0-9а-яёіїєґ]+/gi, '-').replace(/^-|-$/g, '').slice(0, 40) || 'instance';
 const totalMemMB = () => Math.floor(os.totalmem() / 1048576);
 function rmrf(p) { try { fs.rmSync(p, { recursive: true, force: true }); } catch (_) {} }
 
-module.exports = { VERSION, UA, OS, ARCH, sleep, fetchJSON, fetchBuf, sha1, sha1File, exists, download, pool, readZip, extractZip, slug, totalMemMB, rmrf };
+module.exports = { VERSION, UA, OS, ARCH, sleep, fetchJSON, fetchBuf, sha1, sha1File, exists, download, pool, readZip, extractZip, writeZip, slug, totalMemMB, rmrf };
