@@ -1,0 +1,172 @@
+'use strict';
+const { app, BrowserWindow, ipcMain, shell, dialog, nativeTheme, Notification } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const cfg = require('./config');
+const { Store, DEFAULTS } = require('./core/store');
+const { Instances } = require('./core/instances');
+const L = require('./core/loaders');
+const MR = require('./core/modrinth');
+const mc = require('./core/mc');
+const auth = require('./core/auth');
+const CFA = require('./core/curseforge');
+const { Discord } = require('./core/discord');
+const Upd = require('./core/updater');
+
+app.setName('SA Launcher');
+// Только один экземпляр. Если предыдущий процесс «завис» после закрытия окна, он выходит сам (см. quitAll),
+// поэтому повторный запуск всегда получает блокировку.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) { app.exit(0); }
+
+// ID приложения Discord (Rich Presence). Создайте приложение на https://discord.com/developers/applications
+// и вставьте Application ID в launcher/package.json -> "discordClientId" (или в настройках лаунчера).
+let win, store, inst, rpc; const started = new Map();
+// Deep link salauncher://install?... — ссылка из браузера/сайта. Если окно ещё не готово, ждёт в pendingLink.
+const DL = require('./core/deeplink');
+let pendingLink = DL.fromArgv(process.argv), rendererReady = false;
+const showWin = () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } };
+function handleLink(raw) {
+  const l = typeof raw === 'string' ? DL.parse(raw) : raw; if (!l) return;
+  pendingLink = l; showWin();
+  if (rendererReady) { emit('deeplink', l); pendingLink = null; }
+}
+try { if (app.isPackaged) app.setAsDefaultProtocolClient('salauncher'); } catch (_) {}
+app.on('open-url', (e, url) => { e.preventDefault(); handleLink(url); }); // macOS
+const emit = (ch, data) => { if (win && !win.isDestroyed()) win.webContents.send('sa:event', ch, data); };
+
+function createWindow() {
+  rendererReady = false;
+  const dark = true;
+  win = new BrowserWindow({
+    width: 1180, height: 760, minWidth: 940, minHeight: 600, show: false, title: 'SA Launcher',
+    backgroundColor: '#0f1115', icon: path.join(__dirname, '../renderer/logo.png'),
+    titleBarStyle: 'hidden', titleBarOverlay: { color: '#00000000', symbolColor: '#9aa3b2', height: 44 },
+    webPreferences: { preload: path.join(__dirname, '../preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
+  });
+  win.removeMenu();
+  win.loadFile(path.join(__dirname, '../renderer/index.html'));
+  win.once('ready-to-show', () => { try { win.webContents.setZoomFactor(((store && store.settings.uiScale) || 100) / 100); } catch (_) {} win.show(); });
+  win.on('closed', () => { win = null; });
+  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith('file://')) { e.preventDefault(); if (/^https:\/\//.test(url)) shell.openExternal(url); } });
+}
+
+const handlers = {
+  'app:init': () => ({ settings: store.settings, accounts: store.accounts(), locale: app.getLocale(), site: cfg.siteUrl, platform: process.platform, version: app.getVersion(), dataDir: app.getPath('userData') }),
+  'settings:set': patch => { const s = store.set(patch); if (win && patch.titleOverlay) win.setTitleBarOverlay(patch.titleOverlay); if ('discord' in patch || 'discordClientId' in patch) setupRpc(); if ('startup' in patch) { try { app.setLoginItemSettings({ openAtLogin: !!patch.startup }); } catch (_) {} } if ('uiScale' in patch && win) win.webContents.setZoomFactor((+patch.uiScale || 100) / 100); return s; },
+
+  'auth:login': async () => {
+    const acc = await auth.login(cfg.siteUrl, url => shell.openExternal(url));
+    store.saveAccount(acc); store.set({ selected: acc.id }); return { accounts: store.accounts(), selected: acc.id };
+  },
+  'auth:cancel': () => auth.cancel(),
+  'auth:remove': id => { store.removeAccount(id); return { accounts: store.accounts(), selected: store.settings.selected }; },
+  'auth:select': id => { store.set({ selected: id }); return id; },
+
+  'mc:versions': async () => { const m = await mc.manifest(); return m.versions.map(v => ({ id: v.id, type: v.type })); },
+  'loader:versions': ({ loader, mc: v }) => L.loaderVersions(loader, v),
+
+  'inst:list': () => inst.list(),
+  'inst:create': async o => { const i = inst.create(o); inst.prepare(i.id).catch(e => emit('error', { id: i.id, message: e.message })); return i; },
+  'inst:update': ({ id, patch }) => inst.update(id, patch),
+  'inst:delete': id => inst.remove(id),
+  'inst:duplicate': a => typeof a === 'string' ? inst.duplicate(a) : inst.duplicate(a.id, a),
+  'inst:play': a => { const o = typeof a === 'string' ? { id: a } : a; if (store.settings.minimizeOnLaunch && win) setTimeout(() => win && !win.isDestroyed() && win.minimize(), 4000); return inst.play(o.id, o.quick); },
+  'inst:recent': () => inst.recent(),
+  'inst:compat': ({ project, src, kind }) => inst.compat(project, src, kind),
+  'inst:projVersions': ({ id, project, src, kind, all }) => inst.projVersions(id, project, src, kind, all),
+  'inst:setIcon': async id => { const r = await dialog.showOpenDialog(win, { filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], properties: ['openFile'] }); if (r.canceled) return false; return inst.setIcon(id, r.filePaths[0]); },
+  'inst:clearIcon': id => inst.clearIcon(id),
+  'app:clearCache': () => { const d = path.join(app.getPath('userData'), 'shared', 'installers'); let n = 0; const walk = p => { try { for (const e of fs.readdirSync(p, { withFileTypes: true })) { const f = path.join(p, e.name); e.isDirectory() ? walk(f) : n += fs.statSync(f).size; } } catch (_) {} }; walk(d); fs.rmSync(d, { recursive: true, force: true }); return n; },
+  // Окно готово принимать ссылку: отдаём отложенную (однократно)
+  'app:pendingLink': () => { rendererReady = true; const l = pendingLink; pendingLink = null; return l; },
+  'app:openData': () => shell.openPath(app.getPath('userData')),
+  'settings:reset': () => { const keep = { lang: store.settings.lang, selected: store.settings.selected }; for (const k of Object.keys(DEFAULTS)) delete store.settings[k]; return store.set({ ...DEFAULTS, ...keep }); },
+  'inst:stop': id => inst.stop(id),
+  'inst:folder': ({ id, sub }) => shell.openPath(path.join(inst.game(id), sub || '')),
+  'inst:content': ({ id, kind }) => inst.content(id, kind),
+  'inst:toggle': ({ id, kind, file }) => inst.toggle(id, kind, file),
+  'inst:removeFile': ({ id, kind, file }) => inst.removeFile(id, kind, file),
+  'inst:install': ({ id, project, version }) => inst.installProject(id, project, version),
+  'inst:checkUpdate': id => inst.checkUpdate(id),
+  'inst:modVersions': ({ id, kind, file, all }) => inst.modVersions(id, kind || 'mod', file, all),
+  'inst:setModVersion': ({ id, kind, file, version }) => inst.setModVersion(id, kind || 'mod', file, version),
+  'inst:installCF': ({ id, project, file, meta }) => inst.installCurseforge(id, project, file, meta || {}),
+  'inst:cfVersions': ({ id, project, kind }) => inst.cfVersions(id, project, kind),
+  'inst:fixCrash': ({ id, problems }) => inst.fixCrash(id, problems),
+  'inst:applyUpdate': ({ id, mc: v, removeMissing }) => inst.applyUpdate(id, v, removeMissing),
+  'inst:optimize': id => inst.optimize(id),
+  'build:list': () => inst.builds(),
+  'inst:export': async id => { const i = inst.read(id); const r = await dialog.showSaveDialog(win, { defaultPath: i.name.replace(/[\\/:*?"<>|]/g, '_') + '.mrpack', filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }] }); if (r.canceled || !r.filePath) return null; return inst.exportMrpack(id, r.filePath); },
+  'inst:modUpdates': id => inst.modUpdates(id),
+  'inst:updateMods': ({ id, files }) => inst.updateMods(id, files),
+  'inst:backup': id => inst.backupWorlds(id, 'manual'),
+  'inst:backupsFolder': id => shell.openPath(inst.backupsDir(id)),
+  'inst:inspect': id => inst.inspect(id),
+  'inst:syncOptions': ({ from, to, mode }) => inst.syncOptions(from, to, mode),
+  'build:versions': () => inst.buildVersions(),
+  'build:install': ({ id, mc: v, name }) => inst.installBuild(id, { mc: v, name }),
+  'inst:installModpack': ({ project, version }) => inst.installModpack(project, version),
+  'inst:importFile': async () => {
+    const r = await dialog.showOpenDialog(win, { filters: [{ name: 'Modrinth modpack', extensions: ['mrpack'] }], properties: ['openFile'] });
+    if (r.canceled) return null; return inst.importMrpack(fs.readFileSync(r.filePaths[0]), path.basename(r.filePaths[0], '.mrpack'));
+  },
+
+  'cat:search': o => o.src === 'curseforge' ? CFA.search(cfg.siteUrl, o) : MR.search(o),
+  'cat:project': id => MR.project(id),
+  'cat:versions': ({ id, loaders, game_versions }) => MR.versions(id, { loaders, game_versions }),
+  'launcher:check': () => Upd.check(cfg.siteUrl, app.getVersion()),
+  'launcher:update': () => Upd.install(cfg.siteUrl, shell, quitAll, pct => emit('progress', { task: 'launcher', label: 'SA Launcher', pct, done: pct >= 1 })),
+  'shell:open': url => { if (/^https:\/\//.test(url)) shell.openExternal(url); },
+  'shell:site': p => shell.openExternal(cfg.siteUrl + (p || ''))
+};
+
+function setupRpc() {
+  const on = store.settings.discord !== false;
+  const id = store.settings.discordClientId || require('../../package.json').discordClientId || '';
+  if (rpc) { rpc.clear(); rpc.close(); rpc = null; }
+  if (on && id) { rpc = new Discord(id); rpc.set({ details: 'В лаунчере', state: 'SA Launcher', timestamps: { start: Date.now() }, assets: { large_image: 'logo', large_text: 'SA Launcher' } }); }
+}
+// Presence: «Играет в <сборка>» на время игры
+function presence() {
+  if (!rpc) return;
+  const run = inst.list().filter(i => i.running)[0];
+  if (run) rpc.set({ details: 'Играет в Minecraft ' + run.mc, state: run.name + (run.loader !== 'vanilla' ? ' · ' + run.loader : ''), timestamps: { start: started.get(run.id) || Date.now() }, assets: { large_image: 'logo', large_text: 'SA Launcher' } });
+  else rpc.set({ details: 'В лаунчере', state: 'SA Launcher', timestamps: { start: Date.now() }, assets: { large_image: 'logo', large_text: 'SA Launcher' } });
+}
+function quitAll() {
+  try { if (rpc) { rpc.clear(); rpc.close(); } } catch (_) {}
+  try { for (const c of inst ? inst.running.values() : []) if (c) c.kill(); } catch (_) {}
+  app.exit(0);
+}
+
+if (gotLock) {
+  app.whenReady().then(() => {
+    nativeTheme.themeSource = 'dark';
+    store = new Store(app.getPath('userData')); store.purgeUnlicensed();
+    const bus = (ch, data) => { emit(ch, data); if (ch === 'state') {
+      if (data.running) started.set(data.id, Date.now());
+      else {
+        const nm = (() => { try { return inst.read(data.id).name; } catch (_) { return ''; } })();
+        if (store.settings.reopen && win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+        if (store.settings.notify !== false && Notification.isSupported() && !(win && win.isFocused())) new Notification({ title: 'SA Launcher', body: nm + ': ' + (data.code ? 'Minecraft crashed (exit code ' + data.code + ')' : 'game closed') }).show();
+      } setTimeout(presence, 300); } };
+    inst = new Instances({ dataDir: app.getPath('userData'), store, emit: bus });
+    for (const [name, fn] of Object.entries(handlers)) {
+      ipcMain.handle('sa:' + name, async (_e, arg) => { try { return { ok: true, data: await fn(arg) }; } catch (e) { return { ok: false, error: e.message || String(e) }; } });
+    }
+    createWindow(); setupRpc();
+    app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) createWindow(); });
+  });
+  // Повторный запуск: показываем окно (или создаём заново, если оно было закрыто, но процесс жив)
+  app.on('second-instance', (_e, argv) => {
+    const l = DL.fromArgv(argv); if (l) pendingLink = l;
+    if (l && win && !win.isDestroyed() && rendererReady) { emit('deeplink', l); pendingLink = null; }
+    if (!win || win.isDestroyed()) { if (app.isReady()) createWindow(); return; }
+    if (win.isMinimized()) win.restore(); win.show(); win.focus();
+  });
+  // Закрыли окно — полностью завершаем процесс (игра при этом продолжает работать как отдельный процесс)
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') { try { if (rpc) { rpc.clear(); rpc.close(); } } catch (_) {} app.exit(0); } });
+  app.on('before-quit', () => { try { if (rpc) rpc.close(); } catch (_) {} });
+}
