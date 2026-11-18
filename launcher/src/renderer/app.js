@@ -363,7 +363,7 @@ async function doLogin(btn) {
 // «Новая сборка»: две большие кнопки — своя (как в Prism) и из каталога (как в Modrinth)
 async function newInstanceModal(mode) {
   if (!mode) return modeModal();
-  return mode === 'modrinth' || mode === 'curseforge' ? packModal(mode) : modeModal('custom');
+  return modeModal(mode);
 }
 // Источники сборок в стиле Prism: слева список, справа описание и действие. Чтобы подключить новый источник,
 // достаточно добавить его сюда и поставить ready: true (ATLauncher, FTB и Technic пока в разработке).
@@ -379,26 +379,26 @@ const PACK_SOURCES = [
   { k: 'code', i: 'share', n: () => t('shareHave'), d: 'srcCodeD', act: 'data-code' }
 ];
 function modeModal(sel = 'custom') {
+  const mount = k => { if (k === 'custom') customModal(); else if (k === 'modrinth' || k === 'curseforge') packModal(k); else if (k === 'code') codeModal(); };
   const pane = k => {
     const x = PACK_SOURCES.find(y => y.k === k) || PACK_SOURCES[0];
-    if (x.k === 'custom') return '<div id="cust"></div>';
+    if (x.k === 'custom' || x.k === 'modrinth' || x.k === 'curseforge' || x.k === 'code') return '<div id="inl"></div>';
     return `<h2 style="margin-top:0">${ic(x.i)} ${esc(x.n())}</h2><p class="mu">${esc(t(x.d))}</p>` + (x.soon
       ? `<div class="card" style="border-color:var(--warn)"><b>${esc(t('srcSoon'))}</b><div class="sm mu" style="margin-top:4px">${esc(tf('srcSoonD', [x.n()]))}</div></div><div class="row gap wrap" style="margin-top:14px"><button class="btn p" data-import data-close>${ic('import')}${esc(t('importPack'))}</button></div>`
       : `<div class="row gap wrap" style="margin-top:14px"><button class="btn p" ${x.act}>${ic(x.i)}${esc(t('srcOpen'))}</button></div>`);
   };
   modal(`<i class="wide" hidden></i><h2>${ic('plus')} ${esc(t('newInst'))}</h2><div class="srcs"><div class="srcl">${PACK_SOURCES.map(x => `<button class="src ${x.k === sel ? 'on' : ''}" data-srcsel="${x.k}">${ic(x.i)}<span>${esc(x.n())}</span>${x.soon ? `<small>${esc(t('srcSoon'))}</small>` : ''}</button>`).join('')}</div><div class="srcp" id="srcp">${pane(sel)}</div></div>
   <div class="foot"><button class="btn" data-close>${esc(t('cancel'))}</button></div>`);
-  $('.srcl').onclick = e => { const b = e.target.closest('[data-srcsel]'); if (!b) return; $$('.src').forEach(x => x.classList.toggle('on', x === b)); $('#srcp').innerHTML = pane(b.dataset.srcsel); if (b.dataset.srcsel === 'custom') customModal(); };
-  if (sel === 'custom') customModal();
+  $('.srcl').onclick = e => { const b = e.target.closest('[data-srcsel]'); if (!b) return; $$('.src').forEach(x => x.classList.toggle('on', x === b)); $('#srcp').innerHTML = pane(b.dataset.srcsel); mount(b.dataset.srcsel); };
+  mount(sel);
 }
 // Поиск готовых сборок прямо в окне: Modrinth (.mrpack) и CurseForge (.zip)
 function packModal(start) {
-  let src = start === 'curseforge' ? 'curseforge' : 'modrinth';
-  modal(`<i class="wide" hidden></i><h2>${ic('compass')} ${esc(t('modeMr'))}</h2>
+  const src = start === 'curseforge' ? 'curseforge' : 'modrinth';
+  if (!$('#inl')) return;
+  $('#inl').innerHTML = (`<h2 style="margin-top:0">${ic('compass')} ${src === 'curseforge' ? 'CurseForge' : 'Modrinth'}</h2>
   <div class="search">${ic('search')}<input id="pq" type="search" placeholder="${esc(t('searchPacks'))}"></div>
-  <div class="row" style="margin-top:10px"><div class="pill" id="psrc">${[['modrinth', 'Modrinth'], ['curseforge', 'CurseForge']].map(([k, n]) => `<button data-ps="${k}" class="${k === src ? 'on' : ''}">${n}</button>`).join('')}</div></div>
-  <div id="pr" style="max-height:46vh;overflow:auto;display:grid;gap:8px;margin-top:12px"></div>
-  <div class="foot"><button class="btn" data-nmode="">${ic('back')}${esc(t('prev'))}</button><button class="btn" data-close>${esc(t('cancel'))}</button></div>`);
+  <div id="pr" style="max-height:44vh;overflow:auto;display:grid;gap:8px;margin-top:12px"></div>`);
   let seq = 0, tm;
   const load = async () => {
     const my = ++seq, box = $('#pr'); if (!box) return; box.innerHTML = `<div class="mu">${esc(t('loading'))}</div>`;
@@ -408,7 +408,6 @@ function packModal(start) {
     } catch (e) { if ($('#pr')) $('#pr').innerHTML = `<div class="card empty">${esc(e.message)}</div>`; }
   };
   $('#pq').oninput = () => { clearTimeout(tm); tm = setTimeout(load, 350); };
-  $('#psrc').onclick = e => { const b = e.target.closest('[data-ps]'); if (!b) return; src = b.dataset.ps; $$('[data-ps]').forEach(x => x.classList.toggle('on', x === b)); load(); };
   load(); $('#pq').focus();
 }
 // Что делать после установки/импорта модпака: открыть сборку и, если часть файлов нельзя скачать автоматически, показать их список
@@ -428,15 +427,15 @@ function manualModal(id) {
 }
 // Prism-стиль: имя, группа, список версий с фильтрами, загрузчик и его версия
 async function customModal() {
-  if (!$('#cust')) return;
+  if (!$('#inl')) return;
   if (!S.mcv) { try { S.mcv = await api('mc:versions'); } catch (e) { return fail(e); } }
-  if (!$('#cust')) return; // пока грузился список, пользователь переключил вкладку
   const st = { name: '', group: '', mc: '', loader: S.settings.defLoader || 'fabric', lv: '', lvs: [], f: '', types: { release: true, snapshot: !!S.settings.defSnaps, old: false }, ok: true };
   const groups = [...new Set(S.instances.map(i => i.group).filter(Boolean))];
   const kind = v => v.type === 'release' ? 'release' : v.type === 'snapshot' ? 'snapshot' : 'old';
   const list = () => S.mcv.filter(v => st.types[kind(v)] && (!st.f || v.id.toLowerCase().includes(st.f.toLowerCase())));
+  if (!$('#inl')) return; // пользователь переключил вкладку, пока грузился список
   st.mc = (S.mcv.find(v => v.type === 'release') || S.mcv[0]).id;
-  $('#cust').innerHTML = `<h2 style="margin-top:0">${ic('gear')} ${esc(t('modeCustom'))}</h2>
+  $('#inl').innerHTML = (`<h2 style="margin-top:0">${ic('gear')} ${esc(t('modeCustom'))}</h2>
   <div class="row gap wrap"><div class="grow" style="min-width:200px"><label class="lab" style="margin-top:0">${esc(t('name'))}</label><input id="nn" style="width:100%" placeholder="My world"></div>
   <div class="grow" style="min-width:160px"><label class="lab" style="margin-top:0">${esc(t('group'))}</label><input id="ng" list="ngl" style="width:100%" placeholder="${esc(t('groupPh'))}"><datalist id="ngl">${groups.map(g => `<option value="${esc(g)}">`).join('')}</datalist></div></div>
   <label class="lab">${esc(t('mcVersion'))}</label>
@@ -445,7 +444,7 @@ async function customModal() {
   <label class="lab">${esc(t('loader'))}</label><div class="seg">${LOADERS.map(l => `<button data-l="${l}" class="${st.loader === l ? 'on' : ''}">${LN[l]}</button>`).join('')}</div>
   <div class="row gap" style="margin-top:10px;${adv() ? '' : 'display:none'}"><select id="nlv" class="grow"></select></div>
   <div class="mu sm" id="ls" style="margin-top:8px;min-height:18px"></div>
-  <div class="foot"><button class="btn p" id="nc">${ic('plus')}${esc(t('create'))}</button></div>`;
+  <div class="foot"><button class="btn p" id="nc">${ic('plus')}${esc(t('create'))}</button></div>`);
   const drawList = () => {
     const l = list(); if (!l.some(v => v.id === st.mc) && l.length) { st.mc = l[0].id; check(); }
     $('#nvl').innerHTML = l.slice(0, 250).map(v => `<button class="vrow ${v.id === st.mc ? 'on' : ''}" data-nv="${esc(v.id)}"><b>${esc(v.id)}</b><span class="tag">${esc(v.type === 'release' ? t('typeRel') : v.type === 'snapshot' ? t('typeSnap') : t('typeOld'))}</span>${isNew(v.id) ? `<span class="tag" style="background:var(--ac);color:var(--acx);border-color:transparent">★ ${esc(t('newBadge'))}</span>` : ''}</button>`).join('') || `<div class="mu" style="padding:10px">${esc(t('empty'))}</div>`;
@@ -721,8 +720,9 @@ async function shareModal(id) {
   };
 }
 function codeModal() {
-  modal(`<h2>${ic('share')} ${esc(t('shareHave'))}</h2><label class="lab" style="margin-top:0">${esc(t('shareEnter'))}</label><input id="shc" maxlength="12" style="width:100%;text-transform:uppercase;letter-spacing:.2em;font-size:22px;text-align:center" placeholder="ABC234">
-  <div class="foot"><button class="btn" data-nmode="">${ic('back')}${esc(t('prev'))}</button><button class="btn p" id="shg">${ic('download')}${esc(t('shareInstall'))}</button></div>`); $('#shc').focus();
+  if (!$('#inl')) return;
+  $('#inl').innerHTML = `<h2 style="margin-top:0">${ic('share')} ${esc(t('shareHave'))}</h2><p class="mu">${esc(t('srcCodeD'))}</p><label class="lab" style="margin-top:0">${esc(t('shareEnter'))}</label><input id="shc" maxlength="12" style="width:100%;text-transform:uppercase;letter-spacing:.2em;font-size:22px;text-align:center" placeholder="ABC234">
+  <div class="foot"><button class="btn p" id="shg">${ic('download')}${esc(t('shareInstall'))}</button></div>`; $('#shc').focus();
   $('#shg').onclick = async () => { const code = $('#shc').value; modal(`<h2>${ic('share')} ${esc(t('shareHave'))}</h2><p class="mu">${esc(t('buildWait'))}</p><div class="bar"><i style="width:100%;opacity:.35"></i></div>`); $('#modal').onclick = null;
     try { await afterPack(await api('share:download', code)); } catch (e) { closeModal(); fail(e); } };
 }
@@ -788,7 +788,7 @@ document.addEventListener('click', async e => {
   if (q('[data-cloudm]')) return cloudModal(S.bkId);
   if ((b = q('[data-cloudrest]'))) { const pass = ($('#cpw') || {}).value || ''; if (confirm(t('bkpConfirm'))) return run(async () => { await api('cloud:restore', { id: S.bkId, cloudId: b.dataset.cloudrest, pass }); toast(t('cloudRestored'), 'ok'); }); return; }
   if ((b = q('[data-clouddel]'))) return run(async () => { await api('cloud:delete', { id: S.bkId, cloudId: b.dataset.clouddel }); cloudModal(S.bkId); });
-  if (q('[data-code]')) return codeModal();
+  if (q('[data-code]')) return modeModal('code');
   if ((b = q('[data-copy]'))) { try { await navigator.clipboard.writeText(b.dataset.copy); toast(t('shareCopy') + ' ✓', 'ok'); } catch (_) {} return; }
   if ((b = q('[data-bicon]'))) return run(async () => { if (await api('build:setIcon', b.dataset.bicon)) { S.builds = null; S.builds = await api('build:list'); buildModal(b.dataset.bicon); if (S.view === 'builds') viewBuilds(); } });
   if ((b = q('[data-biconclr]'))) return run(async () => { await api('build:clearIcon', b.dataset.biconclr); S.builds = await api('build:list'); buildModal(b.dataset.biconclr); if (S.view === 'builds') viewBuilds(); });
