@@ -1,119 +1,107 @@
 # SA Launcher
 
-Проект из двух частей:
+**A modern, feature-rich Minecraft: Java Edition launcher.**
 
-| Папка | Что это |
-|---|---|
-| `server/` | Сайт (ваш `index.html`) + API: вход через Microsoft, связка «сайт ↔ лаунчер», каталог, кнопки скачивания. Без зависимостей, нужен только Node 18+. |
-| `launcher/` | Сам лаунчер (Electron): сборки как в Prism, каталог Modrinth, 20 языков, темы (тёмная, светлая, AMOLED, жидкое стекло, своя), установщик с лицензией. |
+SA Launcher is an independent Minecraft launcher designed to make managing Minecraft installations, modpacks, mods, shaders, resource packs, and game settings easier.
 
-## Как работает вход
-1. В лаунчере «Войти» → открывается браузер на `https://ВАШ-САЙТ/launcher/login?code=…`
-2. На сайте выбираете Microsoft (лицензия).
-3. Сайт отдаёт аккаунт лаунчеру по одноразовому коду — лаунчер сам его забирает. Пароль никто не видит.
+The project focuses on customization, performance, convenience, and giving players more control over their Minecraft experience.
 
-## 1. Запуск сайта
-```bash
-cd server
-cp .env.example .env      # заполните (см. ниже)
-node server.js            # http://localhost:3000
-```
-На хостинге: любой VPS / Render / Railway / Fly.io с Node 18+, команда запуска `node server.js`, HTTPS обязателен (его даёт сам хостинг или nginx/Caddy).
+---
 
-### Ключи входа
-**Microsoft** (https://portal.azure.com → Microsoft Entra ID → App registrations → New registration):
-- Supported account types: *Personal Microsoft accounts only*
-- Redirect URI (Web): `https://ВАШ-САЙТ/auth/microsoft/callback`
-- Certificates & secrets → New client secret → в `.env`: `MS_CLIENT_ID`, `MS_CLIENT_SECRET`
-- ⚠️ Mojang требует одобрения приложения для Minecraft API: заполните форму https://aka.ms/mce-reviewappid (на время проверки вход может отвечать ошибкой `invalid_app`/403).
+## Features
 
+### Game Management
+- Create and manage multiple Minecraft installations.
+- Support for Vanilla, Fabric, Quilt, Forge, and NeoForge.
+- Import modpacks from `.mrpack` and `.zip` archives.
+- Update installations or downgrade to older versions.
+- Manage individual installation settings.
+- Create and restore world backups.
 
-## 2. Сборка лаунчера (.exe)
-1. Откройте `launcher/package.json` и поставьте свой адрес в `"saSite"`.
-2. Нужен Node 18+ на **Windows** (для .exe):
-```bash
-cd launcher
-npm install
-npm start          # проверка без установки
-npm run dist       # готово: launcher/dist/SA-Launcher-Setup-1.0.0.exe
-```
-Установщик спросит: язык → лицензионное соглашение → папку установки → ярлык на рабочем столе → установка.
+### Mod and Content Management
+- Integrated Modrinth and CurseForge catalogs.
+- Download mods, resource packs, shaders, and modpacks.
+- Automatically install required dependencies.
+- Select specific versions of mods.
+- Import and export modpacks.
+- Install content directly through `salauncher://` links.
 
-### Без Windows — через GitHub (бесплатно)
-1. Загрузите папку проекта в репозиторий GitHub.
-2. Settings → Secrets and variables → Actions → **Variables** → `SA_SITE` = адрес вашего сайта.
-3. `git tag v1.0.0 && git push --tags` (или Actions → *Build SA Launcher* → Run workflow).
-4. Через несколько минут в **Releases** появятся `.exe`, `.dmg`, `.AppImage`.
+### Performance Optimization
+- Built-in optimization tool.
+- Automatic installation of compatible performance mods.
+- Java memory configuration.
+- Optimized Java launch arguments.
+- Support for popular optimization mods, including Sodium, Lithium, FerriteCore, ModernFix, and more.
 
-## 3. Как выложить скачивание на сайт
-Кнопки сайта ведут на `/download/windows|macos|linux`. Сервер отдаёт файл одним из двух способов:
-- **Вариант А — GitHub Releases:** в `.env` пропишите `GITHUB_REPO=ваш-ник/репозиторий`. Новый релиз появится на сайте сам (кэш 5 минут).
-- **Вариант Б — свои файлы:** положите `.exe` / `.dmg` / `.AppImage` в `server/releases/`. Берётся самый новый.
+### Account System
+- Microsoft account authentication.
+- Minecraft: Java Edition license verification.
+- Secure browser-based authentication.
+- No need to share your Microsoft password with the launcher.
 
-## Что готово и что проверить
-- ✅ Проверено: синтаксис, 20 языков × 73 строки, интерфейс (скриншоты во всех темах), сервер (ссылка входа, связка с лаунчером, скачивание, защита путей), разбор ZIP/библиотек/аргументов.
-- ⚠️ Не проверено на реальных серверах (в среде разработки не было интернета): вход Microsoft, скачивание игры, запуск Minecraft, Forge/NeoForge, NSIS-установщик. Первую сборку обязательно прогоните: войти → создать сборку Fabric → играть.
-- Иконка сейчас увеличена из вашего 128×128 — для чёткости замените `launcher/build/icon.png` на 512×512.
-- macOS/Linux-сборки без подписи: macOS покажет предупреждение Gatekeeper. Для Windows без сертификата будет SmartScreen («Неизвестный издатель») — лечится покупкой сертификата подписи кода.
-- Автообновление самого лаунчера пока нет (новая версия = новый установщик на сайте).
+**Important:** A valid Minecraft: Java Edition license is required to play. Unlicensed and unsupported account types are not accepted.
 
-## Что умеет лаунчер
-- Сборки (Vanilla, Fabric, Quilt, Forge, NeoForge), импорт `.mrpack`, установка модпаков из Modrinth.
-- Каталог Modrinth: моды, шейдеры, ресурспаки, модпаки; зависимости ставятся сами.
-- **Обновить сборку:** лаунчер проверяет 8 новейших версий Minecraft, показывает «N из M модов совместимо», для несовместимых предлагает **убрать и обновить** или **остаться на текущей версии**. Перед обновлением копия модов сохраняется.
-- **Оптимизировать:** ставит Sodium, Sodium Extra, Lithium, Better Block Entities, Entity Culling, ImmediatelyFast, Smart Particles, FerriteCore, ModernFix, Iris, Voxy, Chunky и GGTU под вашу версию и загрузчик (что не подходит — пропускает), настраивает память и флаги Java. Список — `OPT_MODS` в `launcher/src/main/core/instances.js`.
-- **Темы:** тёмная, светлая, AMOLED, жидкое стекло, **Снег, Солнце, Листопад, Дождь** (анимированный фон как на сайте), своя. Акцентный цвет — пресеты, пипетка и ползунок оттенка.
-- Java скачивается автоматически (тот же рантайм, что у официального лаунчера).
+### Skins
+- Preview Minecraft skins from the front and back.
+- Upload custom PNG skins.
+- Support for Classic and Slim player models.
+- Manage a local skin collection.
+- Support for player capes.
+- Skin management through official Mojang APIs.
 
-## Что нового в 1.1.0
-- Выбор версии любого мода (кнопка «Выбрать версию» у мода в сборке; Modrinth и CurseForge).
-- Авто-починка вылетов из-за модов (`core/crash.js`): ставит недостающий/нужный мод, обновляет, отключает конфликтные, добавляет память.
-- CurseForge в каталоге (нужна переменная `CF_API_KEY` в Cloudflare Pages).
-- Кнопка «Обновить лаунчер» (Настройки) — берёт последний GitHub Release через `/api/launcher`.
-- Discord Rich Presence: вставьте Application ID в `launcher/package.json` → `discordClientId` (или в Настройках). Картинку `logo` загрузите в Rich Presence Assets приложения Discord.
-- Исправлено: лаунчер не открывался после закрытия.
+### Customization
+- Multiple interface themes:
+  - Dark
+  - Light
+  - AMOLED
+  - Liquid Glass
+  - Snow
+  - Sun
+  - Falling Leaves
+  - Rain
+  - Custom themes
+- Custom accent colors.
+- Color presets and a color picker.
+- 20 interface languages.
+- Simple and Advanced interface modes.
 
-## 1.2.0
-Миры и серверы на главной (быстрый вход), фото сборки, расширенные настройки сборки и лаунчера, страницы в каталоге, выбор версии при установке, серые «недоступные» сборки, цвета акцента как на сайте + свой, новая иконка настроек.
+### Additional Features
+- Discord Rich Presence.
+- Automatic Java runtime downloads.
+- Crash assistance and mod conflict handling.
+- Quick access to worlds and servers.
+- SA Builds: ready-made Minecraft configurations.
+- Share modpacks using short codes.
+- Optional encrypted cloud world backups.
 
-## 1.4.0
-Играть можно только с лицензионным аккаунтом Microsoft: перед каждым запуском лаунчер проверяет профиль в Minecraft Services. Без сети запуск разрешён, только если лицензия подтверждалась в последние 7 дней. Аккаунты других типов удаляются при старте.
+---
 
-## 1.5.0 — «Установить в SA Launcher»
-Ссылки `salauncher://install?src=modrinth|curseforge&project=<id>&version=<id>&type=mod|resourcepack|shader|modpack` открывают лаунчер и предлагают установить проект: окно подтверждения → выбор сборки (несовместимые серые) → выбор версии (запрошенная — первой). На сайте в каталоге у каждого проекта есть кнопка «Открыть в SA Launcher». Ссылка считается недоверенной: `src`, `type` и идентификаторы проверяются по строгому формату, загрузка идёт только с Modrinth/CurseForge, ничего не запускается. Сборки (modpack) поддерживаются для Modrinth и CurseForge (с 1.7.0).
+## Screenshots
 
+Screenshots and additional information are available on the official website.
 
-## 1.6.0
-- **Сборки SA** (вкладка в левой панели): готовые наборы «моды + ресурспаки + шейдеры». Первая — **Vanilla SA** (Fabric). Описание в `launcher/src/main/core/builds.js` — новые сборки добавляются туда же. Проекты ищутся на Modrinth по названию (опечатки не страшны); чего нет под выбранную версию — пропускается и показывается в отчёте. Ресурспаки и шейдер включаются автоматически.
-- «Обновить» теперь работает в обе стороны: новые версии и откат на старые.
-- Исправлено мигание панели прогресса (при создании сборки и установке модов).
-- Исправлено: «Оптимизировать» ничего не ставило после удаления всех модов.
+**Website:** https://sa-launcher.pages.dev
 
-## 1.7.0 — что добавлено
-- **Модпаки CurseForge** (`core/curseforge.js`, `core/instances.js`): установка из каталога / «Новая сборка» / ссылки `salauncher://`, импорт `.zip` (формат определяется по содержимому, `.mrpack` тоже). Файлы, запрещённые для скачивания вне сайта CurseForge, не ломают установку — они попадают в список «Нужно скачать вручную» (название + ссылка) и добавляются кнопкой «Добавить скачанные файлы».
-- **Скины** (`core/skins.js`, вкладка «Скины»): предпросмотр спереди/сзади, загрузка PNG (проверка 64×64/64×32 и 24 КБ), модель Classic/Slim, сброс, плащи, локальная коллекция скинов. Работает через официальный API Mojang. Аватарки аккаунтов рисуются из скина — сторонний crafatar больше не используется.
-- **Копии миров:** окно «Восстановить из копии» (дата, размер, восстановление и удаление; перед восстановлением текущие миры сохраняются). **Облачные копии** (по явному включению, шифрование AES-256-GCM на устройстве, пароль нигде не хранится) и **обмен сборкой по коду** (`core/cloud.js`) — клиентская часть готова, нужен серверный код (см. ниже).
-- **Новые версии Minecraft:** Java берётся из манифеста Mojang, при отсутствии нужного runtime — самый новый доступный; если загрузчик для свежей версии ещё не вышел — понятное сообщение и кнопка «взять ближайшую старую версию»; у свежих релизов (до 14 дней) значок «Новая».
-- **Режимы интерфейса:** «Простой» (по умолчанию у новых пользователей; у существующих остаётся «Расширенный») и «Расширенный»; приветствие из 3 шагов при первом запуске.
-- **О лаунчере** (Настройки → «О лаунчере»): что уходит наружу, без рекламы и телеметрии. Иконки уменьшаются до миниатюр, кэши освобождаются при сворачивании окна.
-- **Картинка сборки SA:** `launcher/src/renderer/builds/vanilla-sa.jpg`. Сменить можно двумя способами: заменить файл (или поправить поле `icon` в `core/builds.js`), либо кнопкой «Сменить картинку» в окне сборки. Картинка копируется в созданную сборку как её иконка (меняется в настройках сборки).
+---
 
-## Что нужно на сервере (`server/`) для облака и обмена по коду
-Серверной части в этом архиве нет, поэтому лаунчер лишь вызывает эти маршруты; пока их нет — показывает «Сервер SA пока не поддерживает эту функцию».
+## Installation
 
-**Обмен по коду** (без входа):
-- `POST /api/share` — тело: байты `.mrpack` (`application/octet-stream`), заголовок `X-Pack-Name` (URL-кодированное имя). Лимит 25 МБ (413 при превышении), срок жизни 7 дней, лимит запросов по IP. Проверять, что это ZIP с `modrinth.index.json`. Ответ: `{ "code": "ABC234", "expiresAt": <мс> }`. Код — 6–8 символов из `A-Z2-9` (без 0/O/1/I), случайный.
-- `GET /api/share/:code` — отдаёт байты `.mrpack`; 404, если кода нет или срок истёк.
+Download the latest available release from the official website or GitHub Releases.
 
-**Облачные копии миров** (авторизация `Authorization: Bearer <Minecraft access token>`; сервер проверяет токен запросом `GET https://api.minecraftservices.com/minecraft/profile` и берёт `id` как владельца; при неверном токене — 401):
-- `GET /api/cloud/worlds/:slot` → `{ "items": [{ "id", "created", "size" }] }`
-- `PUT /api/cloud/worlds/:slot` — тело: зашифрованные байты (сервер их не читает), заголовок `X-Keep: 5`; хранить последние 5, остальные удалять; квота на пользователя (например 500 МБ), 413 при превышении 150 МБ на файл. Ответ `{ "id": "..." }`.
-- `GET /api/cloud/worlds/:slot/:id` — байты; `DELETE /api/cloud/worlds/:slot/:id`.
-`:slot` — хэш (аккаунт + id сборки), имён сборок сервер не видит.
+1. Download the installer for your operating system.
+2. Run the installer.
+3. Select your preferred language.
+4. Accept the license agreement.
+5. Choose the installation directory.
+6. Complete the installation.
+7. Launch SA Launcher and sign in with your Microsoft account.
 
-**Для модпаков CurseForge (необязательно, но желательно):** `POST /api/cf/files`, тело `{ "files": [{ "projectID": 1, "fileID": 2 }] }` (до 50 за раз) → `{ "files": [{ "projectID", "id", "file", "name", "url" (null, если автор запретил скачивание), "sha1", "classId" }] }`. Без него лаунчер ищет файлы через `/api/versions` по каждому проекту (медленнее, а очень старые файлы могут не найтись и попадут в список «вручную»). Также `GET /api/search?src=curseforge&type=modpack` должен искать по classId 4471.
+---
 
-## Что проверено и что нет (1.7.0)
-Проверено автоматически: синтаксис и переводы (`node launcher/scripts/check.js`), разбор CurseForge/Modrinth-модпаков на подставных данных (запрещённые файлы, чужие адреса, `../` в именах, zip-slip), проверка PNG скина, запросы к API скинов на подставных ответах, шифрование и расшифровка копий, восстановление копий, отрисовка всех экранов в обоих режимах (без реального окна).
-Не проверено (нет Electron и интернета в среде): реальные запросы к Mojang/CurseForge/Modrinth, реальный вид интерфейса, ссылка `curseforge.com/projects/<id>` для ручной загрузки, миниатюры через `nativeImage`, поведение Forge/NeoForge. Первую сборку прогоните вручную: вход → «Скины» → установка сборки SA → модпак CurseForge → копия и восстановление миров.
+## Building from Source
 
+### Requirements
+
+- Node.js 18 or newer.
+- npm.
+- Windows for
