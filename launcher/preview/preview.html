@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SA Launcher — предпросмотр интерфейса</title>
+<base href="../src/renderer/">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="weather.css">
+</head>
+<body>
+<div class="blobs"><i></i><i></i><i></i></div>
+<canvas id="fx"></canvas>
+<div id="app">
+  <div class="drag"></div>
+  <aside class="rail" id="rail"></aside>
+  <main id="view"></main>
+  <div id="dock"></div>
+  <div id="modal" class="hide"></div>
+  <div id="toasts"></div>
+</div>
+<script src="../../preview/mock.js"></script>
+<script src="i18n.js"></script>
+<script src="fx.js"></script>
+<script src="sprites.js"></script>
+<script src="weather.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
