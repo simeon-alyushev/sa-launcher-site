@@ -1,0 +1,43 @@
+/* Погодные темы. Всё декоративное: pointer-events:none, ничего не перехватывает клики. Спрайты рисует pane.js на одном холсте. */
+#wx-pane{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:3;pointer-events:none;image-rendering:pixelated}
+#wx-acc{position:fixed;z-index:6;pointer-events:none;font-size:var(--L,44px)}
+#wx-acc>*{position:absolute;display:block;image-rendering:pixelated;max-width:none;user-select:none}
+#wx-g{position:absolute;width:0;height:0;overflow:hidden;visibility:hidden}
+
+/* --- аксессуары (1em = размер логотипа) --- */
+/* зонт 26×14 px: купол шире логотипа (1.5em), лишь слегка залезает на верх логотипа; --um-y — где проходит нижняя кромка купола */
+/* зонт держат сбоку: стержень у правого края иконки, купол наклонён влево и слегка накрывает её верх */
+#wx-acc .umw{width:1.5em;left:.25em;top:-.646em;transform:rotate(-12deg);transform-origin:50% 100%}
+#wx-acc .um{width:100%;position:static;transform-origin:50% 100%}
+/* шапка 19×9 px: по центру верхней кромки, опушка заходит на логотип, небольшой наклон */
+#wx-acc .ht{width:.98em;left:.01em;top:-.33em;transform:rotate(-4deg);transform-origin:50% 100%}
+/* ночной колпак 21×10 px: чуть набок, кончик свисает */
+#wx-acc .nc{width:1.04em;left:-.02em;top:-.4em;transform:rotate(-6deg);transform-origin:50% 100%}
+/* листья на иконке: три небольших, по углам */
+#wx-acc .lf{width:.3em}
+#wx-acc .l0{left:-.07em;top:-.06em;transform-origin:50% 50%}
+#wx-acc .l1{left:.76em;top:-.08em}
+#wx-acc .l2{left:.58em;top:.82em}
+/* очки 16×5 px: по центру иконки */
+#wx-acc .sg{width:.9em;left:.05em;top:.36em;transform-origin:50% 0}
+
+/* --- «Экономия ресурсов» и отсутствие движения: никаких движущихся объектов --- */
+html[data-lite] #wx-pane,html[data-lite] #wx-g{display:none!important}
+html[data-lite] #wx-acc *{animation:none!important}
+@media(prefers-reduced-motion:reduce){#wx-pane{display:none}}
+
+/* --- свой фон темы «Своя» --- */
+#bgimg{position:fixed;inset:0;z-index:0;display:none;pointer-events:none;overflow:hidden;background:var(--bg)}
+html[data-bgimg] #bgimg{display:block}
+#bgimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:var(--fit,cover);object-position:center;display:block;user-select:none}
+#bgimg::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--bg) calc(var(--dim,40)*1%),transparent)}
+html[data-bgimg] body{background:transparent}
+.bgp{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;margin-top:6px}
+.bgt{position:relative;aspect-ratio:16/10;border-radius:16px;overflow:hidden;border:2px solid var(--bd);background:var(--card2);padding:0;cursor:pointer}
+.bgt.on{border-color:var(--ac)}.bgt img{width:100%;height:100%;object-fit:cover;display:block}
+.bgt .tag{position:absolute;left:6px;bottom:6px;font-size:10px;padding:1px 7px;background:rgba(0,0,0,.55);color:#fff;border:0}
+.bgbig{width:100%;max-width:420px;aspect-ratio:16/9;border-radius:20px;overflow:hidden;border:1px solid var(--bd);position:relative;background:var(--bg)}
+.bgbig img{position:absolute;inset:0;width:100%;height:100%;object-fit:var(--fit,cover)}
+.bgbig::after{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--bg) calc(var(--dim,40)*1%),transparent)}
+.bgbig .fk{position:absolute;z-index:1;left:10%;top:14%;right:40%;height:22%;border-radius:99px;background:var(--card);border:1px solid var(--bd)}
+.bgbig .fk2{position:absolute;z-index:1;left:10%;top:48%;right:10%;height:34%;border-radius:18px;background:var(--card);border:1px solid var(--bd)}
