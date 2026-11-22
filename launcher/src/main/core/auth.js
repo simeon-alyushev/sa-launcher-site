@@ -1,21 +1,12 @@
 'use strict';
 
-const http = require('http');
-const crypto = require('crypto');
+const { clipboard, dialog } = require('electron');
 
-// Публичный Client ID официального лаунчера Minecraft
+// Публичный Client ID официального лаунчера Minecraft / Xbox
 const CLIENT_ID = '00000000402b5328';
 const SCOPE = 'XboxLive.signin offline_access';
 
-let current = null;
-
-const PAGE = (ok, msg) => `<!doctype html><meta charset="utf-8"><title>SA Launcher</title>
-<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1115;color:#f2f4f8;font:16px system-ui,sans-serif">
-<div style="text-align:center;padding:36px;border-radius:28px;background:#181b22">
-<div style="font-size:40px">${ok ? '✓' : '!'}</div>
-<h2>${msg}</h2>
-<p style="color:#9aa3b2">${ok ? 'Можно закрыть эту вкладку и вернуться в SA Launcher.' : 'Закройте вкладку и попробуйте снова.'}</p>
-</div>`;
+let currentController = null;
 
 async function postJson(url, body, headers = {}) {
   const res = await fetch(url, {
@@ -42,7 +33,7 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
   });
 
   const xblToken = xbl.Token;
-  const uhs = xbl.DisplayClaims?.xui?.[0]?.uhs;
+  const uhs = xbl.DisplayClaims?.xui?.?.uhs;
   if (!xblToken || !uhs) throw new Error('Ошибка получения токена Xbox Live');
 
   // 2. Получение XSTS токена для Minecraft
@@ -88,93 +79,93 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
   };
 }
 
-function login(siteUrl, openExternal) {
-  if (current) current.cancel();
+async function login(siteUrl, openExternal) {
+  if (currentController) currentController.abort();
+  const controller = new AbortController();
+  currentController = controller;
 
-  return new Promise((resolve, reject) => {
-    const state = crypto.randomBytes(16).toString('hex');
-    let done = false;
+  try {
+    // Запрашиваем Device Code у Microsoft
+    const codeRes = await fetch('https://live.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        scope: SCOPE,
+        response_type: 'device_code'
+      }),
+      signal: controller.signal
+    });
 
-    const finish = (err, acc) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      srv.close();
-      current = null;
-      err ? reject(err) : resolve(acc);
-    };
+    const codeData = await codeRes.json();
+    if (!codeRes.ok || !codeData.device_code) {
+      throw new Error(codeData.error_description || 'Не удалось запросить код входа у Microsoft');
+    }
 
-    const srv = http.createServer(async (req, res) => {
-      const u = new URL(req.url, 'http://127.0.0.1');
-      if (u.pathname !== '/callback') {
-        res.writeHead(404);
-        return res.end();
-      }
+    const userCode = codeData.user_code;
+    const verifyUrl = codeData.verification_uri || 'https://microsoft.com';
+    const intervalMs = (codeData.interval || 5) * 1000;
+    const expiresAt = Date.now() + (codeData.expires_in || 900) * 1000;
 
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    // Копируем код в буфер обмена и показываем системное окно с подсказкой
+    clipboard.writeText(userCode);
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Вход через Microsoft',
+      message: `Ваш код для входа: ${userCode}`,
+      detail: `Код уже скопирован в буфер обмена.\n\nСейчас откроется страница ${verifyUrl} — просто вставьте код (Ctrl+V) и подтвердите вход в аккаунт.`,
+      buttons: ['Открыть браузер']
+    }).then(() => {
+      if (!controller.signal.aborted) openExternal(verifyUrl);
+    });
 
-      if (u.searchParams.get('state') !== state) {
-        res.writeHead(400);
-        return res.end(PAGE(false, 'Ошибка безопасности (неверный state)'));
-      }
+    // Опрашиваем сервер Microsoft, пока пользователь вводит код в браузере
+    while (Date.now() < expiresAt) {
+      if (controller.signal.aborted) throw new Error('cancelled');
+      await new Promise((r) => setTimeout(r, intervalMs));
+      if (controller.signal.aborted) throw new Error('cancelled');
 
-      const code = u.searchParams.get('code');
-      if (!code || u.searchParams.get('error')) {
-        res.end(PAGE(false, 'Вход отменён'));
-        return finish(new Error('cancelled'));
-      }
-
-      try {
-        const redirectUri = `http://127.0.0.1:${srv.address().port}/callback`;
-        const tokenParams = new URLSearchParams({
+      const pollRes = await fetch('https://live.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
           client_id: CLIENT_ID,
-          code,
-          grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
-          scope: SCOPE
-        });
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          device_code: codeData.device_code
+        }),
+        signal: controller.signal
+      });
 
-        const msRes = await fetch('https://live.com', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: tokenParams
-        });
-        const msData = await msRes.json();
-        if (!msRes.ok || !msData.access_token) {
-          throw new Error(msData.error_description || 'Не удалось получить токен Microsoft');
-        }
+      const pollData = await pollRes.json();
 
-        const acc = await exchangeMsToMc(msData.access_token, msData.refresh_token);
-        res.end(PAGE(true, 'Вы вошли как ' + String(acc.name).replace(/[<>&]/g, '')));
-        finish(null, acc);
-      } catch (e) {
-        res.writeHead(400);
-        res.end(PAGE(false, e.message || 'Ошибка авторизации'));
-        finish(e);
+      if (pollRes.ok && pollData.access_token) {
+        currentController = null;
+        return await exchangeMsToMc(pollData.access_token, pollData.refresh_token);
       }
-    });
 
-    const timer = setTimeout(() => finish(new Error('timeout')), 10 * 60e3);
-    current = { cancel: () => finish(new Error('cancelled')) };
-    srv.on('error', finish);
+      if (pollData.error === 'authorization_pending' || pollData.error === 'slow_down') {
+        continue;
+      }
 
-    srv.listen(0, '127.0.0.1', () => {
-      const redirectUri = `http://127.0.0.1:${srv.address().port}/callback`;
-      const authUrl = new URL('https://live.com');
-      authUrl.searchParams.set('client_id', CLIENT_ID);
-      authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('redirect_uri', redirectUri);
-      authUrl.searchParams.set('scope', SCOPE);
-      authUrl.searchParams.set('state', state);
-      authUrl.searchParams.set('prompt', 'select_account');
+      if (pollData.error === 'authorization_declined') throw new Error('Вход отклонён пользователем');
+      if (pollData.error === 'expired_token') throw new Error('Время действия кода истекло');
+      throw new Error(pollData.error_description || pollData.error || 'Ошибка ожидания подтверждения');
+    }
 
-      openExternal(authUrl.toString());
-    });
-  });
+    throw new Error('timeout');
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('cancelled');
+    throw err;
+  } finally {
+    if (currentController === controller) currentController = null;
+  }
 }
 
 const cancel = () => {
-  if (current) current.cancel();
+  if (currentController) {
+    currentController.abort();
+    currentController = null;
+  }
 };
 
 // Автоматически обновляет токен через Microsoft, если он скоро истечёт
