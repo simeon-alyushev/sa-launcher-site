@@ -12,7 +12,7 @@ const P = {
   x: '<path d="M6 6l12 12M18 6L6 18"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>', back: '<path d="M15 5l-7 7 7 7"/>', copy: '<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', tag: '<path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/>', import: '<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
   tool: '<path d="M14.7 6.3a4 4 0 00-5 5L3 18l3 3 6.7-6.7a4 4 0 005-5l-2.5 2.5-2.2-.5-.5-2.2z"/>',
-  box: '<path d="M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8"/>',
+  box: '<path d="M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8"/>', gem: '<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20M9 3l3 6 3-6M12 21L9 9M12 21l3-12"/>',
   shirt: '<path d="M8 3l-5 3 2 5 3-1v11h8V10l3 1 2-5-5-3a4 4 0 01-8 0z"/>', cloud: '<path d="M7 18a4 4 0 010-8 5.5 5.5 0 0110.6 1.3A3.4 3.4 0 0117 18z"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>', history: '<path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8M3 3v5h5M12 7v5l3 2"/>'
 };
 const ic = n => `<svg class="i" viewBox="0 0 24 24">${P[n]}</svg>`;
@@ -107,7 +107,7 @@ async function loadRecent() { try { S.recent = await api('inst:recent'); renderR
 function renderRail() {
   const a = cur(); loadHead(a);
   const  nav = (v, i, tt) => `<button class="nav ${S.view === v || (v === 'library' && S.view === 'inst') ? 'on' : ''}" data-go="${v}" title="${esc(tt)}">${ic(i)}</button>`;
-  $('#rail').innerHTML = `<div class="rail-in"><img class="logo" src="logo.png" alt="SA" data-site>${nav('home', 'home', t('home'))}${nav('library', 'library', t('library'))}${nav('discover', 'compass', t('discover'))}${nav('builds', 'box', t('saBuilds'))}${nav('skins', 'shirt', t('skins'))}${railQuick() ? `<div class="sep"></div><div class="rq">${railQuick()}</div>` : ''}<div class="sp"></div>
+  $('#rail').innerHTML = `<div class="rail-in"><img class="logo" src="logo.png" alt="SA" data-site>${nav('home', 'home', t('home'))}${nav('library', 'library', t('library'))}${nav('discover', 'compass', t('discover'))}${nav('builds', 'box', t('saBuilds'))}${nav('skins', 'shirt', t('skins'))}${S.platform === 'win32' ? nav('bedrock', 'gem', 'Bedrock') : ''}${railQuick() ? `<div class="sep"></div><div class="rq">${railQuick()}</div>` : ''}<div class="sp"></div>
   <button class="nav" data-acc title="${esc(t('accounts'))}">${a ? head(a) : ic('user')}</button>${nav('settings', 'gear', t('settings'))}</div>`;
   SAWeather.sync();
 }
@@ -123,7 +123,7 @@ function renderView() {
   const v = S.view;
   if (v === 'home') return viewHome(); if (v === 'library') return viewLibrary(); if (v === 'inst') return viewInst();
   if (v === 'discover') return viewDiscover(); if (v === 'settings') return viewSettings(); if (v === 'builds') return viewBuilds();
-  if (v === 'skins') return viewSkins(); if (v === 'about') return viewAbout();
+  if (v === 'skins') return viewSkins(); if (v === 'about') return viewAbout(); if (v === 'bedrock') return viewBedrock();
 }
 let setObs = null;   // наблюдатель подсветки пункта в навигации настроек
 const V = html => { if (setObs) { setObs.disconnect(); setObs = null; } $('#view').innerHTML = html; };
@@ -356,7 +356,7 @@ async function versionChoice(instId, projectId, all) {
 }
 
 /* ---------- Настройки ---------- */
-// Мини-панель навигации по разделам настроек (липкая, слева от содержимого): прокрутка к разделу и подсветка текущего
+// Полоска навигации по разделам настроек (вверху, в одной строке с заголовком; липкая): прокрутка к разделу и подсветка текущего
 const SETSEC = [['sx-mode', 'tool', 'uiMode'], ['sx-look', 'shirt', 'appearance'], ['sx-lang', 'globe', 'language'], ['sx-game', 'play', 'secGame'], ['sx-ui', 'compass', 'secUi'], ['sx-sys', 'gear', 'secSys'], ['sx-app', 'refresh', 'launcher'], ['sx-acc', 'user', 'accounts']];
 function setNav() {
   const nav = $('#setnav'), view = $('#view'); if (!nav) return;
@@ -364,7 +364,7 @@ function setNav() {
   mark(SETSEC[0][0]);
   nav.onclick = e => { const b = e.target.closest('[data-sx]'); if (!b) return; const h = document.getElementById(b.dataset.sx); if (!h) return; mark(b.dataset.sx); h.scrollIntoView({ behavior: document.documentElement.dataset.lite ? 'auto' : 'smooth', block: 'start' }); };
   let raf = 0;
-  const spy = () => { raf = 0; const vt = view.getBoundingClientRect().top + 90; let cur = SETSEC[0][0];
+  const spy = () => { raf = 0; const vt = view.getBoundingClientRect().top + 96; let cur = SETSEC[0][0];
     for (const [id] of SETSEC) { const h = document.getElementById(id); if (h && h.getBoundingClientRect().top <= vt) cur = id; }
     if (view.scrollTop + view.clientHeight >= view.scrollHeight - 4) cur = SETSEC[SETSEC.length - 1][0];
     mark(cur); };
@@ -374,8 +374,8 @@ function setNav() {
 }
 function viewSettings() {
   const s = S.settings;
-  V(`<div class="top"><h1>${esc(t('settings'))}</h1><button class="btn" data-site>${ic('globe')}${esc(t('openSite'))}</button></div>
-  <div class="setwrap"><nav class="setnav" id="setnav">${SETSEC.map(([id, ic_, k]) => `<button data-sx="${id}">${ic(ic_)}<span>${esc(t(k))}</span></button>`).join('')}</nav><div class="setmain">
+  V(`<div class="top settop"><h1>${esc(t('settings'))}</h1><nav class="setnav" id="setnav">${SETSEC.map(([id, ic_, k]) => `<button data-sx="${id}" title="${esc(t(k))}">${ic(ic_)}<span>${esc(t(k))}</span></button>`).join('')}</nav><button class="btn" data-site>${ic('globe')}${esc(t('openSite'))}</button></div>
+  <div class="setwrap"><div class="setmain">
   <h2 id="sx-mode" style="margin-top:6px">${esc(t('uiMode'))}</h2><div class="card"><div class="seg">${[['simple', t('modeSimple')], ['advanced', t('modeAdv')]].map(([k, n]) => `<button data-uimode="${k}" class="${(adv() ? 'advanced' : 'simple') === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div><div class="mu sm" style="margin-top:8px">${esc(adv() ? t('modeAdvD') : t('modeSimpleD'))}</div></div>
   <h2 id="sx-look">${esc(t('appearance'))}</h2><div class="card">
    <label class="lab" style="margin-top:0">${esc(t('theme'))}</label><div class="themes">${THEMES.map(([k, bg, c]) => `<button class="th ${s.theme === k ? 'on' : ''}" data-th="${k}"><div class="pv" style="background:${bg};--c:${k === 'custom' ? '#fff' : s.accent}"></div>${esc(t({ dark: 'dark', light: 'light', amoled: 'amoled', glass: 'glass', glasslight: 'glass', cold: 'snow', warm: 'sun', autumn: 'leaves', spring: 'rain', night: 'night', custom: 'custom' }[k]))}${k === 'glasslight' ? ' ☀' : ''}</button>`).join('')}</div>
@@ -877,6 +877,42 @@ async function paintCanvases(root = document) {
   for (const c of $$('canvas[data-skin]', root)) { try { const im = await loadImg(c.dataset.skin); drawSkin(c, im, c.dataset.slim === '1', c.dataset.back === '1', +c.dataset.sc || 4); } catch (_) {} }
   for (const c of $$('canvas[data-cape]', root)) { try { drawCape(c, await loadImg(c.dataset.cape), +c.dataset.sc || 4); } catch (_) {} }
 }
+/* ---------- 3D-модель скина: тяните мышью, чтобы вращать, колесо — масштаб, двойной щелчок — сброс ---------- */
+// Собирается из CSS-кубов (по раскладке текстур Minecraft): работает без WebGL и сторонних библиотек.
+function skin3d(el, src, slim, o = {}) {
+  if (!el) return;
+  const U = o.u || 8, im = new Image();
+  im.onload = () => {
+    if (!el.isConnected) return;
+    const leg = im.naturalHeight <= 32, TH = leg ? 32 : 64, aw = slim ? 3 : 4;
+    // [u, v, w, h, d, x, y, рост, зеркало]  — координаты в пикселях скина, центр модели в (0,0)
+    const P = [[0, 0, 8, 8, 8, 0, -12, 0], [32, 0, 8, 8, 8, 0, -12, .5],
+      [16, 16, 8, 12, 4, 0, -2, 0], [40, 16, aw, 12, 4, -(4 + aw / 2), -2, 0], [0, 16, 4, 12, 4, -2, 10, 0]];
+    if (leg) P.push([40, 16, aw, 12, 4, 4 + aw / 2, -2, 0, 1], [0, 16, 4, 12, 4, 2, 10, 0, 1]);
+    else P.push([16, 32, 8, 12, 4, 0, -2, .25], [40, 32, aw, 12, 4, -(4 + aw / 2), -2, .25], [0, 32, 4, 12, 4, -2, 10, .25],
+      [32, 48, aw, 12, 4, 4 + aw / 2, -2, 0], [48, 48, aw, 12, 4, 4 + aw / 2, -2, .25], [16, 48, 4, 12, 4, 2, 10, 0], [0, 48, 4, 12, 4, 2, 10, .25]);
+    const css = (u, v, tw, th, g) => { const sx = (tw + 2 * g) / tw, sy = (th + 2 * g) / th;
+      return `width:${(tw + 2 * g) * U}px;height:${(th + 2 * g) * U}px;left:${-(tw + 2 * g) * U / 2}px;top:${-(th + 2 * g) * U / 2}px;background-image:url(&quot;${esc(src)}&quot;);background-size:${64 * U * sx}px ${TH * U * sy}px;background-position:${-u * U * sx}px ${-v * U * sy}px`; };
+    const parts = P.map(([u, v, w, h, d, x, y, g, mir]) => {
+      const F = [[u + d, v + d, w, h, `translateZ(${(d / 2 + g) * U}px)`], [u + 2 * d + w, v + d, w, h, `rotateY(180deg) translateZ(${(d / 2 + g) * U}px)`],
+        [u, v + d, d, h, `rotateY(-90deg) translateZ(${(w / 2 + g) * U}px)`], [u + d + w, v + d, d, h, `rotateY(90deg) translateZ(${(w / 2 + g) * U}px)`],
+        [u + d, v, w, d, `rotateX(90deg) translateZ(${(h / 2 + g) * U}px)`], [u + d + w, v, w, d, `rotateX(-90deg) translateZ(${(h / 2 + g) * U}px)`]];
+      return `<div class="p" style="transform:translate3d(${x * U}px,${y * U}px,0)${mir ? ' scaleX(-1)' : ''}">${F.map(([a, b, c, e, tr]) => `<i class="f" style="${css(a, b, c, e, g)};transform:${tr}"></i>`).join('')}</div>`;
+    }).join('');
+    el.innerHTML = `<div class="m">${parts}</div>`;
+    const m = el.firstChild; let rx = o.rx == null ? -8 : o.rx, ry = o.ry == null ? -28 : o.ry, z = 1, drag = null;
+    const set = () => { m.style.transform = `scale(${z}) rotateX(${rx}deg) rotateY(${ry}deg)`; };
+    el._skSet = (a, b) => { rx = a; ry = b; set(); };
+    el.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY }; try { el.setPointerCapture(e.pointerId); } catch (_) {} };
+    el.onpointermove = e => { if (!drag) return; ry += (e.clientX - drag.x) * .7; rx = Math.max(-80, Math.min(80, rx - (e.clientY - drag.y) * .5)); drag = { x: e.clientX, y: e.clientY }; set(); };
+    el.onpointerup = el.onpointercancel = () => { drag = null; };
+    el.onwheel = e => { e.preventDefault(); z = Math.max(.5, Math.min(2.2, z * (e.deltaY < 0 ? 1.1 : .9))); set(); };
+    el.ondblclick = () => { rx = -8; ry = -28; z = 1; set(); };
+    set();
+  };
+  im.src = src;
+}
+
 async function viewSkins() {
   const a = cur();
   if (!a) return V(`<div class="top"><h1>${esc(t('skins'))}</h1></div><div class="card empty">${esc(t('skinNeedAcc'))}<div class="foot" style="justify-content:center"><button class="btn p" data-acc>${ic('user')}${esc(t('signIn'))}</button></div></div>`);
@@ -889,23 +925,23 @@ function renderSkins() {
   const p = S.skins, sv = S.skinSaved || [], back = S.skView === 'back';
   V(`<div class="top"><h1>${esc(t('skins'))}</h1><div class="row"><button class="btn" data-skretry>${ic('refresh')}</button></div></div>
   <div class="row gap wrap" style="align-items:flex-start">
-  <div class="card" style="width:300px;text-align:center"><div style="background:var(--card2);border-radius:22px;padding:18px;display:grid;place-items:center;min-height:300px"><canvas id="skmain" data-skin="${esc(p.skin)}" data-slim="${p.variant === 'slim' ? 1 : 0}" data-back="${back ? 1 : 0}" data-sc="8" style="image-rendering:pixelated"></canvas></div>
+  <div class="card" style="width:300px;text-align:center"><div style="background:var(--card2);border-radius:22px;padding:6px;overflow:hidden"><div class="sk3d" id="sk3d" title="${esc(t('skRot'))}"></div></div><div class="mu sm" style="margin-top:8px">${esc(t('skRot'))}</div>
   <div class="seg" style="justify-content:center;margin-top:12px"><button data-skv="front" class="${back ? '' : 'on'}">${esc(t('skinFront'))}</button><button data-skv="back" class="${back ? 'on' : ''}">${esc(t('skinBack'))}</button></div>
   <div style="margin-top:12px"><b>${esc(p.name)}</b> <span class="tag">${esc(p.variant === 'slim' ? t('skinSlim') : t('skinClassic'))}</span></div></div>
   <div class="grow" style="min-width:300px"><div class="card"><div class="row gap wrap"><button class="btn p" data-skpick>${ic('import')}${esc(t('skinUpload'))}</button><button class="btn" data-sksave>${ic('check')}${esc(t('skinSaveCur'))}</button><button class="btn bad" data-skreset>${ic('refresh')}${esc(t('skinReset'))}</button></div><div class="mu sm" style="margin-top:10px">${esc(t('skinRules'))}</div></div>
   <h2>${esc(t('skinCapes'))}</h2><div class="card"><div class="row gap wrap"><button class="opt ${p.capes.some(c => c.active) ? '' : 'on'}" data-skcape="" style="width:auto;padding:10px 16px">${esc(t('skinNoCape'))}</button>${p.capes.map(c => `<button class="opt ${c.active ? 'on' : ''}" data-skcape="${esc(c.id)}" style="width:auto;padding:10px 14px">${c.data ? `<canvas data-cape="${esc(c.data)}" data-sc="4" style="image-rendering:pixelated"></canvas>` : ''}<b class="sm">${esc(c.alias || 'Cape')}</b></button>`).join('')}</div>${p.capes.length ? '' : `<div class="mu sm" style="margin-top:8px">${esc(t('skinNoCapes'))}</div>`}</div></div></div>
   <h2>${esc(t('skinSaved'))}</h2>${sv.length ? `<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${sv.map(x => `<div class="card" style="text-align:center;padding:12px"><canvas data-skin="${esc(x.data)}" data-slim="${x.variant === 'slim' ? 1 : 0}" data-sc="4" style="image-rendering:pixelated"></canvas><div class="sm" style="margin:6px 0"><b>${esc(x.name)}</b><div class="mu sm">${esc(x.variant === 'slim' ? t('skinSlim') : t('skinClassic'))}</div></div><div class="row" style="justify-content:center"><button class="btn sm p" data-skuse="${esc(x.id)}">${esc(t('skinUse'))}</button><button class="btn sm ic bad" data-skdel="${esc(x.id)}">${ic('trash')}</button></div></div>`).join('')}</div>` : `<div class="card empty">${esc(t('skinEmpty'))}</div>`}`);
-  paintCanvases();
+  paintCanvases(); skin3d($('#sk3d'), p.skin, p.variant === 'slim', back ? { rx: 0, ry: 180 } : {});
 }
 async function skinPick() {
   const f = await api('skin:pick'); if (!f) return;
   let slim = S.skins && S.skins.variant === 'slim', save = true;
   const draw = () => {
-    modal(`<h2>${ic('shirt')} ${esc(t('skinUpload'))}</h2><div class="row gap wrap" style="align-items:flex-start"><div style="background:var(--card2);border-radius:22px;padding:14px"><canvas data-skin="${esc(f.data)}" data-slim="${slim ? 1 : 0}" data-sc="6" style="image-rendering:pixelated"></canvas></div>
+    modal(`<h2>${ic('shirt')} ${esc(t('skinUpload'))}</h2><div class="row gap wrap" style="align-items:flex-start"><div style="background:var(--card2);border-radius:22px;padding:6px;width:240px;overflow:hidden"><div class="sk3d" id="skp" style="height:280px"></div></div>
     <div class="grow" style="min-width:220px"><div class="mu sm">${f.w}×${f.h} · ${(f.size / 1024).toFixed(1)} KB</div><label class="lab">${esc(t('skinModel'))}</label><div class="seg"><button data-m="classic" class="${slim ? '' : 'on'}">${esc(t('skinClassic'))}</button><button data-m="slim" class="${slim ? 'on' : ''}">${esc(t('skinSlim'))}</button></div>
     <label class="lab">${esc(t('name'))}</label><input id="skn" style="width:100%" value="${esc(f.name)}"><label class="row sm" style="margin-top:12px"><button class="sw ${save ? 'on' : ''}" id="sks"></button>${esc(t('skinSaveToo'))}</label></div></div>
     <div class="foot"><button class="btn" data-close>${esc(t('cancel'))}</button><button class="btn p" id="ska">${ic('check')}${esc(t('skinApply'))}</button></div>`);
-    paintCanvases($('#modal'));
+    skin3d($('#skp'), f.data, slim, { u: 6 });
     $$('[data-m]').forEach(b => b.onclick = () => { const n = $('#skn').value; slim = b.dataset.m === 'slim'; draw(); $('#skn').value = n; });
     $('#sks').onclick = e => { save = !save; e.currentTarget.classList.toggle('on', save); };
     $('#ska').onclick = async () => { const name = $('#skn').value.trim(), v = slim ? 'slim' : 'classic'; $('#ska').disabled = true; $('#ska').textContent = t('loading');
@@ -1096,9 +1132,78 @@ function refreshAcc() { if ($('#accm')) $('#accm').innerHTML = accountsHTML(); i
 
 addEventListener('error', e => { if (e.target && e.target.tagName === 'IMG') e.target.style.visibility = 'hidden'; }, true);
 
+/* ---------- Minecraft: Bedrock Edition (только Windows) ---------- */
+// Игра ставится и запускается через Microsoft Store / Xbox; лаунчер находит её, запускает (в том числе сразу на сервер),
+// показывает миры и паки, ставит файлы .mcworld/.mcpack/.mcaddon и делает копии миров.
+const BR_KIND = { resource: 'brResource', behavior: 'brBehavior', skin: 'brSkin' };
+const brIco = (u, e) => u ? `<img class="ico" src="${esc(u)}" alt="">` : `<span class="ico" style="display:grid;place-items:center;font-size:22px;background:var(--card2)">${e}</span>`;
+const brName = id => t(id === 'preview' ? 'brPreview' : 'brRelease');
+async function viewBedrock(force) {
+  const head_ = `<div class="top"><div><h1>${esc(t('brTitle'))}</h1><div class="mu sm">${esc(t('brSub'))}</div></div></div>`;
+  if (S.platform !== 'win32') return V(head_ + `<div class="card empty">${esc(t('brWinOnly'))}</div>`);
+  const B = S.br || (S.br = { ed: 'release', tab: 'worlds' });
+  V(head_ + `<div class="card empty">${esc(t('loading'))}</div>`);
+  let info; try { info = await api('bedrock:info', !!force); } catch (e) { return fail(e); }
+  if (S.view !== 'bedrock') return;
+  const eds = info.editions || [];
+  if (!(eds.find(x => x.id === B.ed) || {}).installed) { const i = eds.find(x => x.installed); if (i) B.ed = i.id; }
+  const e = eds.find(x => x.id === B.ed) || eds[0] || { id: 'release', installed: false };
+  const top = `<div class="top"><div><h1>${esc(t('brTitle'))}</h1><div class="mu sm">${esc(t('brSub'))}</div></div>
+    <div class="row wrap"><div class="seg">${eds.map(x => `<button data-bred="${x.id}" class="${x.id === e.id ? 'on' : ''}">${esc(brName(x.id))}${x.installed ? '' : ' ·&nbsp;—'}</button>`).join('')}</div>
+    <button class="btn ic" data-brscan title="${esc(t('brRescan'))}">${ic('refresh')}</button>
+    ${e.installed ? `<button class="btn p" data-brplay>${ic('play')}${esc(t('play'))}</button>` : ''}</div></div>`;
+  if (!e.installed) return V(top + `<div class="card empty"><div style="font-size:17px;color:var(--tx);font-weight:700;margin-bottom:6px">${esc(tf('brNotInst', [brName(e.id)]))}</div><div style="margin-bottom:16px">${esc(t('brNotInstD'))}</div><button class="btn p" data-brstore>${ic('download')}${esc(t('brGet'))}</button></div>`);
+  const tabs = [['worlds', t('brWorlds')], ['packs', t('brPacks')], ['servers', t('brServers')]];
+  const bar = `<div class="card" style="margin-bottom:14px"><div class="row wrap"><div class="grow mu sm">${esc(brName(e.id))}${e.version ? ' · ' + esc(e.version) : ''}<br>${esc(t('brLoginNote'))}</div>
+    <button class="btn" data-brimport>${ic('import')}${esc(t('brImport'))}</button><button class="btn" data-brfolder>${ic('folder')}${esc(t('openFolder'))}</button></div></div>
+    <div class="seg" style="margin-bottom:14px">${tabs.map(([k, n]) => `<button data-brtab="${k}" class="${B.tab === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div><div id="brbody"></div>`;
+  V(top + bar);
+  const box = $('#brbody');
+  try {
+    if (B.tab === 'worlds') {
+      const w = await api('bedrock:worlds', e.id); if (S.view !== 'bedrock' || !$('#brbody')) return;
+      box.innerHTML = (w.length ? w.map((x, i) => `<div class="card item">${brIco(x.icon, '🌍')}<div class="grow"><b>${esc(x.name)}</b><div class="mu sm">${esc(fmtDate(x.time))} · ${esc(sizeMB(x.size))}</div></div><button class="btn sm" data-brbackup="${i}">${ic('copy')}${esc(t('brBackup'))}</button></div>`).join('') : `<div class="card empty">${esc(t('brNoWorlds'))}</div>`)
+        + `<div class="foot" style="justify-content:flex-start;margin-top:12px"><button class="btn" data-brbackups>${ic('folder')}${esc(t('brBackups'))}</button></div>`;
+      S.br.list = w;
+    } else if (B.tab === 'packs') {
+      const p = await api('bedrock:packs', e.id); if (S.view !== 'bedrock' || !$('#brbody')) return;
+      box.innerHTML = p.length ? p.map((x, i) => `<div class="card item">${brIco(x.icon, '📦')}<div class="grow"><b>${esc(x.name)}</b> <span class="tag">${esc(t(BR_KIND[x.kind]))}</span><div class="mu sm">${esc(x.desc || '')}${x.version ? (x.desc ? ' · ' : '') + 'v' + esc(x.version) : ''} · ${esc(sizeMB(x.size))}</div></div><button class="btn ic sm bad" data-brrm="${i}" title="${esc(t('del'))}">${ic('trash')}</button></div>`).join('') : `<div class="card empty">${esc(t('brNoPacks'))}</div>`;
+      S.br.list = p;
+    } else {
+      const sv = await api('bedrock:servers'); if (S.view !== 'bedrock' || !$('#brbody')) return;
+      S.br.list = sv;
+      box.innerHTML = `<div class="card" style="margin-bottom:12px"><div class="row wrap"><input id="brsn" placeholder="${esc(t('brSrvName'))}" style="flex:1;min-width:140px"><input id="brsh" placeholder="play.example.com" style="flex:2;min-width:180px" spellcheck="false"><input id="brsp" type="number" min="1" max="65535" value="19132" style="width:100px"><button class="btn p" data-bradd>${ic('plus')}${esc(t('brSrvAdd'))}</button></div></div>`
+        + (sv.length ? sv.map((x, i) => `<div class="card item"><div class="grow"><b>${esc(x.name || x.host)}</b><div class="mu sm">${esc(x.host)}:${x.port}</div></div><button class="btn p sm" data-brjoin="${i}">${ic('play')}${esc(t('brJoin'))}</button><button class="btn sm" data-braddg="${i}">${esc(t('brAddGame'))}</button><button class="btn ic sm bad" data-brsdel="${i}" title="${esc(t('del'))}">${ic('x')}</button></div>`).join('') : `<div class="mu sm" style="padding:4px 6px">${esc(t('brNoSrv'))}</div>`);
+    }
+  } catch (err) { fail(err); }
+}
+document.addEventListener('click', async ev => {
+  const q = s => ev.target.closest(s); let b;
+  if (S.view !== 'bedrock') return;
+  const B = S.br || (S.br = { ed: 'release', tab: 'worlds' }), re = () => viewBedrock();
+  if ((b = q('[data-bred]'))) { B.ed = b.dataset.bred; return re(); }
+  if ((b = q('[data-brtab]'))) { B.tab = b.dataset.brtab; return re(); }
+  if (q('[data-brscan]')) return viewBedrock(true);
+  if (q('[data-brstore]')) return run(() => api('bedrock:store', B.ed));
+  if (q('[data-brplay]')) return run(async () => { await api('bedrock:launch', { edition: B.ed }); toast(t('brStarting'), 'ok'); });
+  if (q('[data-brfolder]')) return run(() => api('bedrock:folder', { edition: B.ed }));
+  if (q('[data-brbackups]')) return run(() => api('bedrock:backups'));
+  if (q('[data-brimport]')) return run(async () => { const n = await api('bedrock:import'); if (n) toast(tf('brImported', [n]), 'ok'); });
+  if ((b = q('[data-brbackup]'))) { const w = B.list[+b.dataset.brbackup]; b.disabled = true; return run(async () => { await api('bedrock:backup', { edition: B.ed, owner: w.owner, folder: w.folder }); toast(t('brBackupDone'), 'ok'); }).finally(() => { b.disabled = false; }); }
+  if ((b = q('[data-brrm]'))) { const p = B.list[+b.dataset.brrm]; if (!confirm(t('brDelPack') + '\n' + p.name)) return; return run(async () => { await api('bedrock:removePack', { edition: B.ed, kind: p.kind, folder: p.folder }); re(); }); }
+  if (q('[data-bradd]')) {
+    const name = $('#brsn').value.trim(), host = $('#brsh').value.trim().replace(/^[a-z]+:\/\//i, ''), port = +$('#brsp').value || 19132;
+    if (!host) return $('#brsh').focus();
+    return run(async () => { const l = await api('bedrock:servers'); const nl = await api('bedrock:servers', [...l, { name: name || host, host, port }]); if (nl.length === l.length) throw new Error('err:brBadHost'); re(); });
+  }
+  if ((b = q('[data-brjoin]'))) return run(async () => { await api('bedrock:launch', { edition: B.ed, server: B.list[+b.dataset.brjoin] }); toast(t('brStarting'), 'ok'); });
+  if ((b = q('[data-braddg]'))) return run(async () => { await api('bedrock:addServer', { edition: B.ed, server: B.list[+b.dataset.braddg] }); toast(t('brStarting'), 'ok'); });
+  if ((b = q('[data-brsdel]'))) return run(async () => { const l = B.list.filter((_, i) => i !== +b.dataset.brsdel); await api('bedrock:servers', l); re(); });
+});
+
 /* ---------- старт ---------- */
 (async function init() {
-  const info = await api('app:init'); Object.assign(S, { accounts: info.accounts, site: info.site, version: info.version });
+  const info = await api('app:init'); Object.assign(S, { accounts: info.accounts, site: info.site, version: info.version, platform: info.platform });
   Object.assign(S.settings, info.settings);
   if (!S.settings.lang) { const l = (info.locale || 'en').toLowerCase().slice(0, 2); S.settings.lang = LANGS[l] ? l : 'en'; api('settings:set', { lang: S.settings.lang }).catch(() => {}); }
   applyTheme({ instant: true }); await refresh(); renderRail(); renderView(); loadRecent();

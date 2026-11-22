@@ -1,7 +1,7 @@
 {
   "name": "sa-launcher",
   "productName": "SA Launcher",
-  "version": "1.9.1",
+  "version": "1.9.4",
   "description": "SA Launcher — лаунчер Minecraft со сборками, каталогом Modrinth, вход через Microsoft",
   "author": "Simeon Alyushev",
   "license": "UNLICENSED",
@@ -13,7 +13,7 @@
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
     "check": "node scripts/check.js",
-    "test": "node scripts/check.js && node scripts/test-packs.js && node scripts/test-bg.js && node scripts/test-boost.js && node scripts/test-auth.js && node scripts/test-ely.js"
+    "test": "node scripts/check.js && node scripts/test-packs.js && node scripts/test-bg.js && node scripts/test-boost.js && node scripts/test-auth.js && node scripts/test-ely.js && node scripts/test-bedrock.js"
   },
   "devDependencies": {
     "electron": "^33.2.0",

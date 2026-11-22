@@ -19,6 +19,7 @@ const Upd = require('./core/updater');
 const { Skins } = require('./core/skins');
 const Cloud = require('./core/cloud');
 const { Backgrounds } = require('./core/bg');
+const BR = require('./core/bedrock');
 // sa-bg:// — отдача своих фонов из папки данных (иначе CSP интерфейса не пропустит локальные файлы)
 protocol.registerSchemesAsPrivileged([{ scheme: 'sa-bg', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
@@ -198,6 +199,26 @@ const handlers = {
   'cat:versions': ({ id, loaders, game_versions }) => MR.versions(id, { loaders, game_versions }),
   'launcher:check': () => Upd.check(cfg.siteUrl, app.getVersion()),
   'launcher:update': () => Upd.install(cfg.siteUrl, shell, quitAll, pct => emit('progress', { task: 'launcher', label: 'SA Launcher', pct, done: pct >= 1 })),
+  // ---- Minecraft: Bedrock Edition (только Windows) ----
+  'bedrock:info': force => BR.info(!!force),
+  'bedrock:launch': ({ edition, server }) => BR.launch(edition || 'release', server || null, u => shell.openExternal(u)),
+  'bedrock:addServer': ({ edition, server }) => { shell.openExternal(BR.addServerLink(edition || 'release', server)); return true; },
+  'bedrock:store': edition => { const e = BR.EDITIONS[edition || 'release']; if (!e) throw new Error('Bad edition'); return shell.openExternal(e.store); },
+  'bedrock:worlds': edition => BR.worlds(edition || 'release'),
+  'bedrock:packs': edition => BR.packs(edition || 'release'),
+  'bedrock:removePack': ({ edition, kind, folder }) => BR.removePack(edition || 'release', kind, folder),
+  'bedrock:backup': ({ edition, owner, folder }) => BR.backupWorld(edition || 'release', owner, folder, path.join(app.getPath('userData'), 'bedrock-backups')),
+  'bedrock:backups': () => { const d = path.join(app.getPath('userData'), 'bedrock-backups'); fs.mkdirSync(d, { recursive: true }); return shell.openPath(d); },
+  'bedrock:folder': ({ edition, sub }) => shell.openPath(BR.folderPath(edition || 'release', sub)),
+  // Файлы .mcworld/.mcpack/.mcaddon/.mctemplate открываются самой игрой (она сама их импортирует)
+  'bedrock:import': async () => {
+    const r = await dialog.showOpenDialog(win, { filters: [{ name: 'Minecraft Bedrock (.mcworld, .mcpack, .mcaddon, .mctemplate)', extensions: BR.IMPORT_EXT.map(x => x.slice(1)) }], properties: ['openFile', 'multiSelections'] });
+    if (r.canceled) return 0;
+    let n = 0;
+    for (const f of r.filePaths) { if (!BR.importable(f) || fs.statSync(f).size > 2e9) continue; const e = await shell.openPath(f); if (e) throw new Error(e); n++; }
+    return n;
+  },
+  'bedrock:servers': list => { if (Array.isArray(list)) store.set({ bedrockServers: list.slice(0, 30).map(s => ({ name: String(s.name || '').slice(0, 40), host: String(s.host || '').trim().slice(0, 253), port: Math.min(65535, Math.max(1, Number(s.port) || 19132)) })).filter(s => BR.HOST_RE.test(s.host) || /^\d{1,3}(\.\d{1,3}){3}$/.test(s.host)) }); return store.settings.bedrockServers || []; },
   'shell:open': url => { if (/^https:\/\//.test(url)) shell.openExternal(url); },
   'shell:site': p => shell.openExternal(cfg.siteUrl + (p || ''))
 };

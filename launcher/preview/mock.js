@@ -15,8 +15,12 @@
   const hit = (n, i, src) => ({ id: String(i), title: n, desc: 'Описание сборки или мода для предпросмотра', icon: svg('#4a8'), downloads: 123456 * i, author: 'author', type: 'mod', src: src || 'modrinth', loaders: ['fabric'] });
   const png = svg('#a67');   // вместо настоящих скинов
   const F = {
-    'app:init': () => ({ accounts: [{ id: 'a1', name: 'Steve', p: 'ms' }], site: 'https://sa.example', version: '1.7.0', locale: 'ru', settings }),
+    'app:init': () => ({ platform: q.get('os') || 'win32', accounts: [{ id: 'a1', name: 'Steve', p: 'ms' }], site: 'https://sa.example', version: '1.7.0', locale: 'ru', settings }),
     'boost:info': o => { const pr = o.preset || 'balanced', m = { balanced: [6144, 1024], fps: [8192, 4096], weak: [3072, 512] }[pr]; return { hw: { ram: 16384, cores: 8 }, rec: 'balanced', current: '', preset: pr, plan: { mem: m[0], xms: m[1], gc: 'G1', java: 21, flags: '-XX:+UseG1GC -XX:+DisableExplicitGC -XX:MaxGCPauseMillis=100' }, opts: { exists: true, backup: false, changes: [{ key: 'renderDistance', from: '16', to: '12' }, { key: 'particles', from: '0', to: '1' }] }, userFlags: false, userMem: false, running: false }; }, 'boost:apply': () => ({ changed: 2 }), 'boost:off': () => ({}),
+    'bedrock:info': () => ({ supported: true, editions: [{ id: 'release', installed: q.get('br') !== '0', version: '1.21.50.7', dir: 'C:\\Users\\Steve\\AppData\\Roaming\\Minecraft Bedrock\\Users\\Shared\\games\\com.mojang' }, { id: 'preview', installed: false, version: '' }] }),
+    'bedrock:worlds': () => [{ folder: 'abc=', owner: 'Shared', name: 'Мой мир', time: now - 36e5, size: 84e6, icon: '' }, { folder: 'def=', owner: 'Shared', name: 'Выживание 2', time: now - 4 * 864e5, size: 210e6, icon: '' }],
+    'bedrock:packs': () => [{ kind: 'resource', folder: 'Faithful', name: 'Faithful 32x', version: '1.2.0', desc: 'Классические текстуры', size: 12e6, icon: '' }, { kind: 'behavior', folder: 'Addon', name: 'Better Mobs', version: '2.0.1', desc: '', size: 3e6, icon: '' }],
+    'bedrock:servers': l => { window.__brs = Array.isArray(l) ? l : (window.__brs || [{ name: 'The Hive', host: 'geo.hivebedrock.network', port: 19132 }]); return window.__brs; },
     'inst:list': () => inst, 'inst:recent': () => ({ worlds: [], servers: [] }), 'mc:versions': () => mcv,
     'loader:versions': () => ['0.16.9', '0.16.8'], 'loader:fallback': () => '26.2',
     'cat:search': o => ({ total: 40, limit: 20, hits: ['Sodium', 'Lithium', 'Iris Shaders', 'Create'].map((n, i) => hit(n, i + 1, o && o.src)) }),
@@ -27,7 +31,7 @@
     'inst:backups': () => [{ name: 'saves-manual-x', reason: 'manual', time: now - 864e5, size: 40e6, worlds: 2 }],
     'cloud:limits': () => ({ share: { maxBytes: 26214400, ttlDays: 7 }, cloud: { keep: 5, maxBytes: 157286400 } }),
     'cloud:list': () => { throw new Error('err:cloudNoServer'); },
-    'skin:profile': () => ({ id: 'a1', name: 'Steve', variant: 'classic', skin: png, capes: [] }), 'skin:saved': () => [], 'skin:head': () => '',
+    'skin:profile': () => ({ id: 'a1', name: 'Steve', variant: 'classic', skin: q.get('skin')==='1' ? 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABK0lEQVR4Xu2asQ2DMBAAQ5R5qFN4nIzAGIyQIsO4yBxMwAaJFCkFtuSH+CP77TuJAmHA3D/gBw8ngXVdX6km4zgmj7AsyyCdoyTnkievAQTUEIWSIKCk/RpAQA1RKMngHi75np/vQvfm9PZpSjfw/lp0nNB9BuwScPX+s3wJ1y2zS0DLXPZc3NO5TbNw3TLdZwACLKevBtE7OKz/w3pfqu///f0gt38h3WcAAjTuI8tEtUA09g+G8tHY/jZtrv9o7SDVCuLxhf5JtUb3GYAAy/evBgjQsGgZBFiOngYI0LBoGQRYjh4AAAAAAAAAwC+oz9HL/X+fu/9Ruv8ihICjKdMa2c+AcK6x+vyCzP//Et1nAAKkFGkdBLQeYQkESIZaBwGtR1gCAZKh1nkDkttU3WR6ovEAAAAASUVORK5CYII=' : png, capes: [] }), 'skin:saved': () => [], 'skin:head': () => '',
     'wizard:plan': o => { const r = (o.items || []).map(i => ({ project: i.project, title: i.title, icon: i.icon, type: i.type, neededBy: [], ok: true, version: 'v1', versionName: '1.0' })); if (r.some(x => x.type === 'mod')) r.push({ project: 'DEPDEP01', title: 'Fabric API', icon: svg('#c84'), type: 'mod', neededBy: [r.find(x => x.type === 'mod').title], ok: true, version: 'v2', versionName: '0.100' }); return r; },
     'wizard:create': o => ({ instance: inst[0], installed: (o.items || []).length, failed: [] }),
     'bg:add': rid => window.__bgAdd ? window.__bgAdd(rid) : null, 'bg:remove': id => window.__bgRemove ? window.__bgRemove(id) : { list: [], sel: '' },

@@ -201,12 +201,23 @@ input[type=number]::-webkit-inner-spin-button{opacity:.4}
 html[data-lite]:not([data-theme^=glass]) *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 html[data-lite] .blobs{display:none!important}
 
-/* навигация по разделам настроек */
-.setwrap{display:grid;grid-template-columns:212px minmax(0,1fr);gap:22px;align-items:start}
-.setnav{position:sticky;top:6px;display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:var(--r2);background:var(--card);border:1px solid var(--bd);box-shadow:var(--sh);backdrop-filter:blur(var(--bl))}
-.setnav button{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:14px;font-weight:600;color:var(--mu);text-align:left;background:transparent;border:0;white-space:nowrap;transition:background .15s,color .15s}
+/* навигация по разделам настроек: полоска вверху, между заголовком и кнопкой «Открыть сайт» */
+.settop{position:sticky;top:4px;z-index:5;flex-wrap:nowrap;padding:8px 10px 8px 18px;margin:6px 0 16px;border-radius:var(--r2);background:var(--card);border:1px solid var(--bd);box-shadow:var(--sh);backdrop-filter:blur(var(--bl)) saturate(1.8);-webkit-backdrop-filter:blur(var(--bl)) saturate(1.8)}
+.settop h1{margin:0;flex:none}.settop>.btn{flex:none}
+.setwrap{display:block}
+.setnav{flex:1 1 auto;min-width:0;display:flex;flex-direction:row;justify-content:center;gap:4px;padding:0 6px;overflow-x:auto;scrollbar-width:none}
+.setnav::-webkit-scrollbar{display:none}
+.setnav button{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:99px;font-weight:600;color:var(--mu);background:transparent;border:0;white-space:nowrap;flex:none;transition:background .15s,color .15s}
+.setnav button span{display:none}
+.setnav button.on span{display:inline}
 .setnav button:hover{background:var(--card2);color:var(--tx)}
-.setnav button.on{background:var(--ac);color:var(--acx)}
+.setnav button.on{background:var(--ac);color:var(--acx);padding:9px 15px}
 .setnav .i{width:18px;height:18px;flex:none}
-.setmain h2{scroll-margin-top:8px}
-@media(max-width:900px){.setwrap{grid-template-columns:minmax(0,1fr);gap:12px}.setnav{top:0;z-index:4;flex-direction:row;overflow-x:auto;padding:8px}.setnav::-webkit-scrollbar{display:none}}
+.setmain h2{scroll-margin-top:84px}
+@media(min-width:1560px){.setnav button span{display:inline}}
+@media(max-width:1020px){.settop{flex-wrap:wrap}.settop .setnav{order:3;flex-basis:100%;justify-content:flex-start;padding:2px 0 0}}
+
+/* 3D-скин */
+.sk3d{width:100%;height:320px;perspective:900px;cursor:grab;touch-action:none;display:grid;place-items:center;user-select:none}.sk3d:active{cursor:grabbing}
+.sk3d .m{position:relative;width:0;height:0;transform-style:preserve-3d}.sk3d .p{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.sk3d .f{position:absolute;background-repeat:no-repeat;image-rendering:pixelated;backface-visibility:hidden}
