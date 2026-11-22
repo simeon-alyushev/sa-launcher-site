@@ -22,5 +22,17 @@ assert(BR.importable('a.MCWORLD') && !BR.importable('a.exe'));
 let url = ''; try { BR.launch('release', { host: 'bad host!' }, () => {}); } catch (e) { url = e.message; } assert(/brWinOnly|brBadHost/.test(url));
 assert(BR.addServerLink('release', { name: 'A|B', host: 'play.x.net', port: 19133 }).startsWith('minecraft://?addExternalServer=A%20B%7Cplay.x.net%3A19133'));
 assert.throws(() => BR.addServerLink('preview', { host: 'a b' }));
+// Определение установленных изданий: разные ответы PowerShell и папки
+const env = { APPDATA: tmp, LOCALAPPDATA: path.join(tmp, 'local2'), SystemDrive: path.join(tmp, 'drv') };
+assert.equal(BR.parsePs('мусор до\n{"pk":{"Name":"Microsoft.MinecraftUWP","Version":"1.21.1"},"sa":[]}\nмусор после').pk.length, 1);   // один объект вместо массива
+assert.equal(BR.parsePs('нет json'), null);
+let d = BR.detect('release', { pk: [{ Name: 'Microsoft.MinecraftUWP', Version: '1.21.1' }], sa: [] }, env);
+assert(d.installed && d.via === 'package' && d.version === '1.21.1');
+d = BR.detect('release', { pk: [], sa: [{ Name: 'Minecraft', AppID: 'Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game' }] }, env);
+assert(d.installed && d.via === 'start' && d.appId === 'Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game');   // настоящий AppID из меню «Пуск»
+d = BR.detect('preview', { pk: [], sa: [] }, env); assert(!d.installed && d.appId === 'Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe!App');
+fs.mkdirSync(path.join(tmp, 'local2', 'Packages', BR.EDITIONS.preview.pfn), { recursive: true });
+d = BR.detect('preview', { pk: [], sa: [] }, env); assert(d.installed && d.via === 'packages-folder');   // PowerShell ничего не нашёл, но папка пакета есть
+d = BR.detect('release', null, env); assert(d.installed && d.via === 'data');   // PowerShell не ответил, есть папка данных
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('OK bedrock');
