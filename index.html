@@ -496,7 +496,9 @@ $("#elyf").onsubmit=async e=>{e.preventDefault();const b=$("#elyb"),er=$("#elye"
 const MK="msa";
 const msGet=()=>{try{const a=JSON.parse(localStorage.getItem(MK)||"[]");return Array.isArray(a)?a.filter(x=>x&&/^[0-9a-f]{32}$/.test(x.id)&&typeof x.name==="string"&&x.name.length<=32).slice(0,10):[]}catch(e){return[]}};
 const msSet=a=>{try{localStorage.setItem(MK,JSON.stringify(a))}catch(e){}};
-const msAcc=x=>({p:"ms",id:x.id,name:x.name,skin:"https://minotar.net/skin/"+encodeURIComponent(x.name)+".png",leg:0});
+const msAcc=x=>({p:"ms",id:x.id,name:x.name,skin:"/api/skin?id="+x.id,leg:x.leg?1:0});
+/* Старые скины 64×32: определяем высоту, чтобы голова рисовалась правильно */
+function msProbe(){msGet().forEach(x=>{if(x.leg!==undefined)return;const put=v=>{msSet(msGet().map(y=>y.id===x.id?{...y,leg:v}:y));me(1)};const im=new Image();im.onload=()=>put(im.naturalHeight===32?1:0);im.onerror=()=>put(0);im.src="/api/skin?id="+x.id})}
 let MSP=null;
 const msOpen=()=>!$("#md").classList.contains("hide");
 function msShow(h){$("#mb").innerHTML='<h2 style="margin:0 0 10px">'+esc(el("mst"))+"</h2>"+h}
@@ -512,7 +514,7 @@ async function msStart(){
   await new Promise(r=>setTimeout(r,iv));if(MSP!==my||!msOpen())return;
   let j;try{const r=await fetch("/api/ms/poll",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({device_code:d.device_code}),cache:"no-store"});j=await r.json()}catch(e){continue}
   if(j.pending){if(j.slow)iv+=5000;continue}
-  if(j.id&&j.name){const l=msGet().filter(x=>x.id!==j.id);l.push({id:j.id,name:j.name});msSet(l);MSP=null;$("#md").classList.add("hide");await me(1);location.hash="#account";return}
+  if(j.id&&j.name){const l=msGet().filter(x=>x.id!==j.id);l.push({id:j.id,name:j.name});msSet(l);MSP=null;$("#md").classList.add("hide");msProbe();await me(1);location.hash="#account";return}
   msErr(j.error,j.detail);return}
  if(MSP===my&&msOpen())msErr("expired")}
 document.addEventListener("click",e=>{const a=e.target.closest('a[href="/auth/microsoft/start"]');if(!a)return;e.preventDefault();msStart()});
@@ -539,7 +541,7 @@ $("#dock").onclick=e=>{const c=e.target.closest(".dk");if(c)show(DK[+c.dataset.i
 $("#hue").oninput=e=>{st.a=h2x(+e.target.value);sv();ap()};
 $("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
 $("#os").onclick=e=>{const a=e.target.closest("a");if(a){e.preventDefault();osSet(a.dataset.os)}};
-ap();route();pop();dock();rain();me().then(elyProbe);
+ap();route();pop();dock();rain();me().then(()=>{elyProbe();msProbe()});
 </script>
 </body>
 </html>
