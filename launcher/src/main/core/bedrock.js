@@ -46,29 +46,55 @@ function mainDir(id, env) {
   return (all.find(d => d.user === 'Shared') || all[0] || {}).dir || null;
 }
 
-// Определение установленных изданий через список пакетов Windows (Get-AppxPackage)
+// Определение установленных изданий. Источники (любого достаточно):
+//   1) пакеты Windows (Get-AppxPackage) по имени и по семейству пакета;
+//   2) приложения меню «Пуск» (Get-StartApps): именно их запускает кнопка «Играть» в Microsoft Store;
+//   3) папка пакета в %LOCALAPPDATA%\Packages, папка Xbox-установки и папка данных com.mojang.
+// Раньше учитывался только первый источник, и если PowerShell отвечал пусто или с ошибкой, установленная игра считалась отсутствующей.
 let cache = null;
-function psJson(cmd) {
+const PS_EXE = () => {
+  const p = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  try { return fs.existsSync(p) ? p : 'powershell.exe'; } catch (_) { return 'powershell.exe'; }
+};
+// Вытаскивает JSON из вывода PowerShell (на случай посторонних строк до и после него)
+function parsePs(out) {
+  const t = String(out || ''), i = t.indexOf('{'), j = t.lastIndexOf('}');
+  if (i < 0 || j < i) return null;
+  try {
+    const o = JSON.parse(t.slice(i, j + 1)), arr = v => v == null ? [] : Array.isArray(v) ? v : [v];
+    return { pk: arr(o.pk), sa: arr(o.sa) };
+  } catch (_) { return null; }
+}
+function psScan() {
+  const names = Object.values(EDITIONS).map(e => "'*" + e.pkg.replace('Microsoft.', '') + "*'").join(',');
+  const cmd = "$ErrorActionPreference='SilentlyContinue';$ProgressPreference='SilentlyContinue';"
+    + `$pk=@(Get-AppxPackage -Name ${names} | Select-Object Name,Version,PackageFamilyName);`
+    + "$sa=@(Get-StartApps | Where-Object { $_.AppID -like '*Minecraft*' } | Select-Object Name,AppID);"
+    + 'ConvertTo-Json -Compress -Depth 4 -InputObject @{pk=$pk;sa=$sa}';
   return new Promise(resolve => {
-    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', cmd], { windowsHide: true, timeout: 20000, maxBuffer: 1 << 20 }, (err, out) => {
-      if (err) return resolve(null);
-      try { const j = JSON.parse(String(out).trim() || 'null'); resolve(j == null ? [] : Array.isArray(j) ? j : [j]); } catch (_) { resolve(null); }
-    });
+    execFile(PS_EXE(), ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', cmd],
+      { windowsHide: true, timeout: 30000, maxBuffer: 1 << 21 }, (err, out) => resolve(parsePs(out)));
   });
+}
+const exists = p => { try { return !!p && fs.existsSync(p); } catch (_) { return false; } };
+// Склеивает результаты PowerShell и проверки папок в сведения об издании
+function detect(id, ps, env = process.env) {
+  const e = ed(id), dirs = dataDirs(id, env);
+  const p = ps && ps.pk.find(x => x && (x.Name === e.pkg || x.PackageFamilyName === e.pfn));
+  const sa = ps && ps.sa.find(x => x && String(x.AppID || '').toLowerCase().startsWith(e.pfn.toLowerCase()));
+  const local = exists(env.LOCALAPPDATA && path.join(env.LOCALAPPDATA, 'Packages', e.pfn));
+  const xbox = exists(path.join(env.SystemDrive ? env.SystemDrive + path.sep : 'C:' + path.sep, 'XboxGames', id === 'release' ? 'Minecraft for Windows' : 'Minecraft Preview for Windows'));
+  const via = p ? 'package' : sa ? 'start' : local ? 'packages-folder' : xbox ? 'xboxgames' : dirs.length ? 'data' : '';
+  return { id, installed: !!via, via, version: p ? p.Version : '', appId: sa ? sa.AppID : e.pfn + '!App', hasData: dirs.length > 0, dir: mainDir(id, env) };
 }
 async function info(force) {
   if (!isWin()) return { supported: false, editions: [] };
   if (cache && !force && Date.now() - cache.t < 60000) return cache.v;
-  const names = Object.values(EDITIONS).map(e => "'" + e.pkg + "'").join(',');
-  const pk = await psJson(`Get-AppxPackage -Name ${names} | Select-Object Name,Version | ConvertTo-Json -Compress`);
-  const editions = Object.keys(EDITIONS).map(id => {
-    const e = EDITIONS[id], p = (pk || []).find(x => x.Name === e.pkg);
-    const dirs = dataDirs(id);
-    // если PowerShell недоступен — считаем игру установленной, когда есть её папка с данными
-    return { id, installed: !!p || (pk === null && dirs.length > 0), version: p ? p.Version : '', hasData: dirs.length > 0, dir: mainDir(id) };
-  });
-  const v = { supported: true, editions };
-  cache = { t: Date.now(), v };
+  const ps = await psScan();
+  const editions = Object.keys(EDITIONS).map(id => detect(id, ps));
+  const v = { supported: true, editions, ps: !!ps };
+  // не запоминаем «ничего не найдено», если PowerShell не ответил: следующая проверка попробует снова
+  if (ps || editions.some(x => x.installed)) cache = { t: Date.now(), v };
   return v;
 }
 
@@ -84,7 +110,8 @@ function launch(id, server, openExternal) {
     url = `${e.scheme}://connect/?serverUrl=${encodeURIComponent(host)}&serverPort=${port}`;
   }
   if (url && typeof openExternal === 'function') { openExternal(url); return true; }   // minecraft://connect — игра запустится и подключится
-  const c = spawn('explorer.exe', [`shell:AppsFolder\\${e.pfn}!App`], { detached: true, stdio: 'ignore', windowsHide: true });
+  const found = cache && cache.v.editions.find(x => x.id === id), appId = (found && found.appId) || (e.pfn + '!App');
+  const c = spawn('explorer.exe', [`shell:AppsFolder\\${appId}`], { detached: true, stdio: 'ignore', windowsHide: true });
   c.on('error', () => {}); c.unref();
   return true;
 }
@@ -164,4 +191,4 @@ function folderPath(id, sub) {
 }
 const importable = f => IMPORT_EXT.includes(path.extname(String(f)).toLowerCase());
 
-module.exports = { EDITIONS, IMPORT_EXT, info, launch, addServerLink, worlds, packs, removePack, backupWorld, folderPath, dataDirs, mainDir, importable, HOST_RE };
+module.exports = { EDITIONS, IMPORT_EXT, parsePs, detect, info, launch, addServerLink, worlds, packs, removePack, backupWorld, folderPath, dataDirs, mainDir, importable, HOST_RE };
