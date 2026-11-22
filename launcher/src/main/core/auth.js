@@ -2,25 +2,43 @@
 
 const { clipboard, dialog } = require('electron');
 
-// Публичный Client ID Minecraft (Switch), поддерживающий Device Code Flow
 const CLIENT_ID = '00000000441cc96b';
 const SCOPE = 'service::://xboxlive.com::MBI_SSL';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
 
 let currentController = null;
 
-async function postJson(url, body, headers = {}) {
+async function safeFetchJson(url, options = {}) {
   const res = await fetch(url, {
+    ...options,
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': UA,
+      ...(options.headers || {})
+    }
+  });
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (e) {
+    const shortUrl = url.replace(/^https?:\/\//, '').split('/').at(0);
+    throw new Error(`Сервер ${shortUrl} вернул HTML вместо JSON (HTTP ${res.status})`);
+  }
+  return { res, data };
+}
+
+async function postJson(url, body, headers = {}) {
+  const { res, data } = await safeFetchJson(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body)
   });
-  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error_description || data.message || `HTTP ${res.status}`);
   return data;
 }
 
 async function exchangeMsToMc(msAccessToken, msRefreshToken) {
-  // 1. Авторизация в Xbox Live (для этого Client ID без префикса d=)
   const xbl = await postJson('https://://xboxlive.com/user/authenticate', {
     Properties: {
       AuthMethod: 'RPS',
@@ -32,16 +50,16 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
   });
 
   const xblToken = xbl.Token;
-  const uhs = xbl.DisplayClaims && xbl.DisplayClaims.xui && xbl.DisplayClaims.xui[0] && xbl.DisplayClaims.xui[0].uhs;
+  const firstUser = Array.isArray(xbl.DisplayClaims?.xui) ? xbl.DisplayClaims.xui.at(0) : null;
+  const uhs = firstUser ? firstUser.uhs : null;
   if (!xblToken || !uhs) throw new Error('Ошибка получения токена Xbox Live');
 
-  // 2. Получение XSTS токена для Minecraft
   const xsts = await postJson('https://xboxlive.com', {
     Properties: {
       SandboxId: 'RETAIL',
-      UserTokens: [xblToken]
+      UserTokens: Array.of(xblToken)
     },
-    RelyingParty: 'rp://api.minecraftservices.com/',
+    RelyingParty: 'rp://://minecraftservices.com',
     TokenType: 'JWT'
   });
 
@@ -51,8 +69,7 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
     throw new Error(`Ошибка XSTS: ${xsts.XErr}`);
   }
 
-  // 3. Обмен XSTS на токен Minecraft Services
-  const mcAuth = await postJson('https://minecraftservices.com', {
+  const mcAuth = await postJson('https://://minecraftservices.comauthentication/login_with_xbox', {
     identityToken: `XBL3.0 x=${uhs};${xsts.Token}`
   });
 
@@ -60,11 +77,10 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
     throw new Error('Не удалось получить токен Minecraft Services');
   }
 
-  // 4. Получение профиля игрока (ник, UUID, скин)
-  const profileRes = await fetch('https://minecraftservices.com', {
-    headers: { Authorization: `Bearer ${mcAuth.access_token}` }
-  });
-  const profile = await profileRes.json();
+  const { res: profileRes, data: profile } = await safeFetchJson(
+    'https://://minecraftservices.comminecraft/profile',
+    { headers: { Authorization: `Bearer ${mcAuth.access_token}` } }
+  );
 
   if (!profileRes.ok || !profile.id) {
     throw new Error('На этом аккаунте не куплена лицензия Minecraft Java Edition');
@@ -76,8 +92,8 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
     accessToken: mcAuth.access_token,
     refreshToken: msRefreshToken,
     expiresAt: Date.now() + (mcAuth.expires_in || 86400) * 1000,
-    skins: profile.skins || [],
-    capes: profile.capes || [],
+    skins: profile.skins || new Array(),
+    capes: profile.capes || new Array(),
     p: 'ms'
   };
 }
@@ -88,58 +104,58 @@ async function login(siteUrl, openExternal) {
   currentController = controller;
 
   try {
-    // Запрашиваем Device Code у Microsoft
-    const codeRes = await fetch('https://live.com', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        scope: SCOPE,
-        response_type: 'device_code'
-      }),
-      signal: controller.signal
-    });
+    const { res: codeRes, data: codeData } = await safeFetchJson(
+      'https://live.com',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: CLIENT_ID,
+          scope: SCOPE,
+          response_type: 'device_code'
+        }),
+        signal: controller.signal
+      }
+    );
 
-    const codeData = await codeRes.json();
     if (!codeRes.ok || !codeData.device_code) {
       throw new Error(codeData.error_description || 'Не удалось запросить код входа у Microsoft');
     }
 
     const userCode = codeData.user_code;
-    const verifyUrl = codeData.verification_uri || 'https://www.microsoft.com/link';
+    const verifyUrl = codeData.verification_uri || 'https://microsoft.com';
     const intervalMs = (codeData.interval || 5) * 1000;
     const expiresAt = Date.now() + (codeData.expires_in || 900) * 1000;
 
-    // Копируем код в буфер обмена и показываем окно
     clipboard.writeText(userCode);
     dialog.showMessageBox({
       type: 'info',
       title: 'Вход через Microsoft',
       message: `Ваш код для входа: ${userCode}`,
       detail: `Код уже скопирован в буфер обмена.\n\nНажмите «Открыть браузер», вставьте код (Ctrl+V) на странице ${verifyUrl} и подтвердите вход.`,
-      buttons: ['Открыть браузер']
+      buttons: Array.of('Открыть браузер')
     }).then(() => {
       if (!controller.signal.aborted) openExternal(verifyUrl);
     });
 
-    // Опрашиваем сервер Microsoft, пока пользователь вводит код
     while (Date.now() < expiresAt) {
       if (controller.signal.aborted) throw new Error('cancelled');
       await new Promise((r) => setTimeout(r, intervalMs));
       if (controller.signal.aborted) throw new Error('cancelled');
 
-      const pollRes = await fetch('https://login.live.com/oauth20_token.srf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-          device_code: codeData.device_code
-        }),
-        signal: controller.signal
-      });
-
-      const pollData = await pollRes.json();
+      const { res: pollRes, data: pollData } = await safeFetchJson(
+        'https://live.com',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: CLIENT_ID,
+            grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+            device_code: codeData.device_code
+          }),
+          signal: controller.signal
+        }
+      );
 
       if (pollRes.ok && pollData.access_token) {
         currentController = null;
@@ -171,7 +187,6 @@ const cancel = () => {
   }
 };
 
-// Автоматически обновляет токен через Microsoft, если он скоро истечёт
 async function ensureFresh(siteUrl, store, acc) {
   if (acc.expiresAt && acc.expiresAt - Date.now() > 120000) return acc;
   if (!acc.refreshToken) {
@@ -187,12 +202,14 @@ async function ensureFresh(siteUrl, store, acc) {
       scope: SCOPE
     });
 
-    const msRes = await fetch('https://login.live.com/oauth20_token.srf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params
-    });
-    const msData = await msRes.json();
+    const { res: msRes, data: msData } = await safeFetchJson(
+      'https://live.com',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+      }
+    );
     if (!msRes.ok || !msData.access_token) throw new Error('refresh_failed');
 
     const freshAcc = await exchangeMsToMc(msData.access_token, msData.refresh_token || acc.refreshToken);
