@@ -89,8 +89,7 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 #hue{-webkit-appearance:none;appearance:none;width:200px;height:10px;border-radius:99px;margin:0 8px;background:linear-gradient(90deg,hsl(0 85% 58%),hsl(60 85% 58%),hsl(120 85% 58%),hsl(180 85% 58%),hsl(240 85% 58%),hsl(300 85% 58%),hsl(360 85% 58%))}
 #hue::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
 #hue::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--bd);cursor:pointer}
-.dock{position:fixed;left:18px;top:110px;width:250px;display:none;flex-direction:column;gap:12px;z-index:2;max-height:calc(100vh - 130px);overflow:auto;padding:4px;scrollbar-width:none}
-@media(min-width:1560px){.dock.on{display:flex}}
+.rain.l{left:18px;right:auto}
 .dk{padding:12px;cursor:pointer;animation:drop .9s cubic-bezier(.3,1.4,.5,1) both;transition:transform .2s}
 .dk:hover{transform:translateY(-3px) scale(1.02)}
 .dk .t{font-size:11px;color:var(--ac);font-weight:800;text-transform:uppercase;margin-bottom:6px}
@@ -100,11 +99,12 @@ footer{text-align:center;color:var(--mu);font-size:13px;padding:30px 0}
 @keyframes drop{from{transform:translateY(-140px) rotate(-5deg);opacity:0}to{transform:none;opacity:1}}
 @media(prefers-reduced-motion:reduce){.dk{animation:none}}
 .rain{position:fixed;right:18px;top:0;bottom:0;width:250px;overflow:hidden;pointer-events:none;z-index:2;display:none}
-@media(min-width:1560px){.rain.on{display:block}}
+@media(min-width:1440px){.rain.on{display:block}}
+@media(min-width:1440px) and (max-width:1559px){.rain{width:200px}.rc{width:190px}.rc p,.rc b{max-width:110px}}
 .rc{position:absolute;top:0;left:0;width:230px;padding:10px 12px;cursor:pointer;pointer-events:auto;animation:fall linear infinite;will-change:transform}
 .rc .row{display:flex;gap:10px;align-items:center}.rc .mi{width:40px;height:40px;border-radius:11px}
 .rc .t{font-size:10px;color:var(--ac);font-weight:800;text-transform:uppercase}
-.rc b{display:block;font-size:14px;line-height:1.2}
+.rc b{display:block;font-size:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
 .rc p{margin:2px 0 0;font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
 .rc:hover{border-color:var(--ac)}
 .rain:has(.rc:hover) .rc{animation-play-state:paused}
@@ -172,7 +172,7 @@ details.faq summary::-webkit-details-marker{display:none}details.faq p{margin:0 
 </head>
 <body>
 <canvas id="fx"></canvas>
-<aside class="dock" id="dock"></aside>
+<aside class="rain l" id="dock"></aside>
 <aside class="rain" id="rain"></aside>
 <div class="wrap">
  <div class="bar">
@@ -437,24 +437,28 @@ async function pop(){const u="https://api.modrinth.com/v2/search?limit=3&index=d
  const draw=r=>{PS=r;$("#popg").innerHTML=r.map(cardH).join("")};
  if(c&&c.hits)draw(c.hits.map(h=>hit(h,"mod")));
  try{draw((await getJ(u,k)).hits.map(h=>hit(h,"mod")))}catch(e){if(!(c&&c.hits))draw(FB.map(f=>({src:"modrinth",id:f[1],title:f[2],desc:f[3],icon:"",downloads:0,author:"",url:"https://modrinth.com/mod/"+f[1]})))}}
-const DT=["mod","shader","resourcepack","modpack"];let DK=[];
+const DT=["mod","modpack","shader","resourcepack"];
 const DF={mod:["sodium","Sodium","Modern rendering engine for Minecraft"],shader:["complementary-reimagined","Complementary Shaders","All-in-one shader pack"],resourcepack:["faithful-32x","Faithful 32x","Classic textures with twice the detail"],modpack:["fabulously-optimized","Fabulously Optimized","Performance and visuals modpack"]};
-async function dock(){DK=DT.map(t=>{const f=DF[t];return{src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",downloads:0,url:"https://modrinth.com/"+t+"/"+f[0],type:t}});
- await Promise.all(DT.map(async(t,i)=>{try{const d=await getJ("https://api.modrinth.com/v2/search?limit=1&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),"dk"+t);if(d.hits&&d.hits[0])DK[i]=hit(d.hits[0],t)}catch(e){}}));
- $("#dock").innerHTML=DK.map((x,i)=>'<div class="card dk" data-i="'+i+'" style="animation-delay:'+(i*.25)+'s"><div class="t">'+esc(ty(x.type))+'</div><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><b>'+esc(x.title)+'</b></div><p>'+esc(x.desc)+'</p><span class="btn p">'+tx("dl")+"</span></div>").join("")}
-let RN=[];
-async function rain(){const g=async(t,k)=>{try{return((await getJ("https://api.modrinth.com/v2/search?limit=6&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),k)).hits||[]).map(h=>hit(h,t))}catch(e){return[]}};
- const [a,b]=await Promise.all([g("shader","rs"),g("resourcepack","rr")]);
- for(let i=0;i<Math.max(a.length,b.length);i++){if(a[i])RN.push(a[i]);if(b[i])RN.push(b[i])}
- if(RN.length<4)for(const t of["shader","resourcepack"]){const f=DF[t];RN.push({src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",url:"https://modrinth.com/"+t+"/"+f[0],type:t})}
- const n=RN.length,d=n*2.6;
- $("#rain").innerHTML=RN.map((x,i)=>'<div class="card rc" data-i="'+i+'" style="--x:'+(i%2?18:0)+'px;--r:'+((i%3-1)*3)+'deg;animation-duration:'+d+'s;animation-delay:-'+(i*2.6).toFixed(1)+'s"><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><div><div class="t">'+esc(ty(x.type))+'</div><b>'+esc(x.title)+'</b><p>'+esc(x.desc)+"</p></div></div></div>").join("")}
+let RN=[],RL=[];
+/* Водопад: моды, сборки, шейдеры и ресурспаки из Modrinth и CurseForge вперемешку, правая и левая колонки */
+async function rain(){
+ const slow=p=>Promise.race([p,new Promise(r=>setTimeout(()=>r([]),6000))]);
+ const mr=(t)=>slow(getJ("https://api.modrinth.com/v2/search?limit=10&index=downloads&facets="+encodeURIComponent('[["project_type:'+t+'"]]'),"rm"+t).then(d=>(d.hits||[]).map(h=>hit(h,t))).catch(()=>[]));
+ const cf=(t)=>slow(getJ("/api/search?src=curseforge&type="+t,"rcf"+t).then(d=>(d.results||[]).slice(0,10)).catch(()=>[]));
+ const lists=await Promise.all(DT.flatMap(t=>[mr(t),cf(t)]));
+ const all=[],seen=new Set();
+ for(let i=0;i<10;i++)for(const l of lists){const x=l[i];if(!x)continue;const k=(x.type||"")+String(x.title).toLowerCase();if(seen.has(k))continue;seen.add(k);all.push(x)}
+ if(all.length<4)for(const t of DT){const f=DF[t];all.push({src:"modrinth",id:f[0],title:f[1],desc:f[2],icon:"",url:"https://modrinth.com/"+t+"/"+f[0],type:t})}
+ const items=all.slice(0,32);
+ RN=items.filter((_,i)=>(i+(i>>1))%2===0);RL=items.filter((_,i)=>(i+(i>>1))%2===1);
+ const paint=(el,arr,shift)=>{const d=Math.max(arr.length,6)*2.6;el.innerHTML=arr.map((x,i)=>'<div class="card rc" data-i="'+i+'" style="--x:'+(i%2?18:0)+'px;--r:'+((i%3-1)*3)+'deg;animation-duration:'+d+'s;animation-delay:-'+(i*2.6+shift).toFixed(1)+'s"><div class="row"><img class="mi" src="'+esc(x.icon||PH)+'" alt=""><div><div class="t">'+esc(ty(x.type))+" · "+(x.src==="curseforge"?"CurseForge":"Modrinth")+'</div><b>'+esc(x.title)+"</b><p>"+esc(x.desc)+"</p></div></div></div>").join("")};
+ paint($("#rain"),RN,0);paint($("#dock"),RL,1.3)}
 $("#rain").onclick=e=>{const c=e.target.closest(".rc");if(c)show(RN[+c.dataset.i])};
-$("#dock").onclick=e=>{const c=e.target.closest(".dk");if(c)show(DK[+c.dataset.i])};
+$("#dock").onclick=e=>{const c=e.target.closest(".rc");if(c)show(RL[+c.dataset.i])};
 $("#hue").oninput=e=>{st.a=h2x(+e.target.value);sv();ap()};
 $("#popg").onclick=e=>{const c=e.target.closest(".pc");if(c)show(PS[+c.dataset.i])};
 $("#os").onclick=e=>{const a=e.target.closest("a");if(a){e.preventDefault();osSet(a.dataset.os)}};
-ap();route();pop();dock();rain();
+ap();route();pop();rain();
 </script>
 </body>
 </html>
