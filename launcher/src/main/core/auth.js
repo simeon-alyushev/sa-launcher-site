@@ -2,9 +2,9 @@
 
 const { clipboard, dialog } = require('electron');
 
-// Публичный Client ID официального лаунчера Minecraft / Xbox
-const CLIENT_ID = '00000000402b5328';
-const SCOPE = 'XboxLive.signin offline_access';
+// Публичный Client ID Minecraft (Switch), поддерживающий Device Code Flow
+const CLIENT_ID = '00000000441cc96b';
+const SCOPE = 'service::://xboxlive.com::MBI_SSL';
 
 let currentController = null;
 
@@ -20,20 +20,19 @@ async function postJson(url, body, headers = {}) {
 }
 
 async function exchangeMsToMc(msAccessToken, msRefreshToken) {
-  // 1. Авторизация в Xbox Live
-  const xbl = await postJson('https://xboxlive.com', {
+  // 1. Авторизация в Xbox Live (для этого Client ID без префикса d=)
+  const xbl = await postJson('https://://xboxlive.com/user/authenticate', {
     Properties: {
       AuthMethod: 'RPS',
       SiteName: '://xboxlive.com',
-      RpsTicket: `d=${msAccessToken}`
+      RpsTicket: msAccessToken
     },
-    RpsTicket: `d=${msAccessToken}`,
-    RelayParty: 'http://xboxlive.com',
+    RelyingParty: 'http://xboxlive.com',
     TokenType: 'JWT'
   });
 
   const xblToken = xbl.Token;
-  const uhs = xbl.DisplayClaims?.xui?.?.uhs;
+  const uhs = xbl.DisplayClaims && xbl.DisplayClaims.xui && xbl.DisplayClaims.xui[0] && xbl.DisplayClaims.xui[0].uhs;
   if (!xblToken || !uhs) throw new Error('Ошибка получения токена Xbox Live');
 
   // 2. Получение XSTS токена для Minecraft
@@ -42,7 +41,7 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
       SandboxId: 'RETAIL',
       UserTokens: [xblToken]
     },
-    RelyingParty: 'rp://://minecraftservices.com',
+    RelyingParty: 'rp://api.minecraftservices.com/',
     TokenType: 'JWT'
   });
 
@@ -53,12 +52,16 @@ async function exchangeMsToMc(msAccessToken, msRefreshToken) {
   }
 
   // 3. Обмен XSTS на токен Minecraft Services
-  const mcAuth = await postJson('https://://minecraftservices.comauthentication/login_with_xbox', {
+  const mcAuth = await postJson('https://minecraftservices.com', {
     identityToken: `XBL3.0 x=${uhs};${xsts.Token}`
   });
 
+  if (!mcAuth.access_token) {
+    throw new Error('Не удалось получить токен Minecraft Services');
+  }
+
   // 4. Получение профиля игрока (ник, UUID, скин)
-  const profileRes = await fetch('https://://minecraftservices.comminecraft/profile', {
+  const profileRes = await fetch('https://minecraftservices.com', {
     headers: { Authorization: `Bearer ${mcAuth.access_token}` }
   });
   const profile = await profileRes.json();
@@ -103,29 +106,29 @@ async function login(siteUrl, openExternal) {
     }
 
     const userCode = codeData.user_code;
-    const verifyUrl = codeData.verification_uri || 'https://microsoft.com';
+    const verifyUrl = codeData.verification_uri || 'https://www.microsoft.com/link';
     const intervalMs = (codeData.interval || 5) * 1000;
     const expiresAt = Date.now() + (codeData.expires_in || 900) * 1000;
 
-    // Копируем код в буфер обмена и показываем системное окно с подсказкой
+    // Копируем код в буфер обмена и показываем окно
     clipboard.writeText(userCode);
     dialog.showMessageBox({
       type: 'info',
       title: 'Вход через Microsoft',
       message: `Ваш код для входа: ${userCode}`,
-      detail: `Код уже скопирован в буфер обмена.\n\nСейчас откроется страница ${verifyUrl} — просто вставьте код (Ctrl+V) и подтвердите вход в аккаунт.`,
+      detail: `Код уже скопирован в буфер обмена.\n\nНажмите «Открыть браузер», вставьте код (Ctrl+V) на странице ${verifyUrl} и подтвердите вход.`,
       buttons: ['Открыть браузер']
     }).then(() => {
       if (!controller.signal.aborted) openExternal(verifyUrl);
     });
 
-    // Опрашиваем сервер Microsoft, пока пользователь вводит код в браузере
+    // Опрашиваем сервер Microsoft, пока пользователь вводит код
     while (Date.now() < expiresAt) {
       if (controller.signal.aborted) throw new Error('cancelled');
       await new Promise((r) => setTimeout(r, intervalMs));
       if (controller.signal.aborted) throw new Error('cancelled');
 
-      const pollRes = await fetch('https://live.com', {
+      const pollRes = await fetch('https://login.live.com/oauth20_token.srf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -184,7 +187,7 @@ async function ensureFresh(siteUrl, store, acc) {
       scope: SCOPE
     });
 
-    const msRes = await fetch('https://live.com', {
+    const msRes = await fetch('https://login.live.com/oauth20_token.srf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params
