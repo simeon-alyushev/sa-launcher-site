@@ -1155,7 +1155,8 @@ async function viewBedrock(force) {
   let info; try { info = await api('bedrock:info', !!force); } catch (e) { return fail(e); }
   if (S.view !== 'bedrock') return;
   const eds = info.editions || [];
-  if (!(eds.find(x => x.id === B.ed) || {}).installed) { const i = eds.find(x => x.installed); if (i) B.ed = i.id; }
+  // Сам выбирает установленное издание только пока пользователь не нажимал кнопки изданий; иначе выбор «Preview» сразу сбрасывался назад
+  if (!B.picked && !(eds.find(x => x.id === B.ed) || {}).installed) { const i = eds.find(x => x.installed); if (i) B.ed = i.id; }
   const e = eds.find(x => x.id === B.ed) || eds[0] || { id: 'release', installed: false };
   const top = `<div class="top"><div><h1>${esc(t('brTitle'))}</h1><div class="mu sm">${esc(t('brSub'))}</div></div>
     <div class="row wrap"><div class="seg">${eds.map(x => `<button data-bred="${x.id}" class="${x.id === e.id ? 'on' : ''}">${esc(brName(x.id))}${x.installed ? '' : ' ·&nbsp;—'}</button>`).join('')}</div>
@@ -1190,7 +1191,7 @@ document.addEventListener('click', async ev => {
   const q = s => ev.target.closest(s); let b;
   if (S.view !== 'bedrock') return;
   const B = S.br || (S.br = { ed: 'release', tab: 'worlds' }), re = () => viewBedrock();
-  if ((b = q('[data-bred]'))) { B.ed = b.dataset.bred; return re(); }
+  if ((b = q('[data-bred]'))) { B.ed = b.dataset.bred; B.picked = true; return re(); }
   if ((b = q('[data-brtab]'))) { B.tab = b.dataset.brtab; return re(); }
   if (q('[data-brscan]')) return viewBedrock(true);
   if (q('[data-brstore]')) return run(() => api('bedrock:store', B.ed));
