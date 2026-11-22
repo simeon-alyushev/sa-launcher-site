@@ -53,10 +53,10 @@ const fail = e => { const m = String(e.message || e).replace(/^Error invoking re
 async function run(fn) { try { return await fn(); } catch (e) { fail(e); } }
 
 /* ---------- тема ---------- */
-// Режим погодных эффектов: full — всё; static — системное «уменьшить анимацию» (только статичный аксессуар на логотипе); off — выключено
+// Режим погодных эффектов: full — всё; static — «Экономия ресурсов» (только статичный аксессуар на логотипе); off — выключено
 function wxMode(s) {
   if (!SAWeather.KEY[s.theme] || s.anims === false) return 'off';
-  return SAWeather.reduced() ? 'static' : 'full';
+  return s.lite === true || SAWeather.reduced() ? 'static' : 'full';
 }
 const bgItem = () => { const s = S.settings; return s.theme === 'custom' && (s.customBgs || []).find(b => b.id === s.customBgSel) || null; };
 const bgUrl = b => window.saBgUrl ? window.saBgUrl(b) : 'sa-bg://f/' + b.id + '?v=' + (b.v || 0);
@@ -66,7 +66,7 @@ function applyBg() {
   const r = document.documentElement, s = S.settings, b = bgItem();
   let el = $('#bgimg'); if (!el) { el = document.createElement('div'); el.id = 'bgimg'; document.body.prepend(el); }
   if (!b) { r.removeAttribute('data-bgimg'); el.innerHTML = ''; bgKey = ''; return; }
-  const frozen = false, key = b.id + ':' + b.v + ':' + frozen;
+  const frozen = b.ext === 'gif' && s.lite === true, key = b.id + ':' + b.v + ':' + frozen;
   r.dataset.bgimg = '1'; el.style.setProperty('--dim', String(Math.min(85, Math.max(0, +s.customBgDim == null || isNaN(+s.customBgDim) ? 40 : +s.customBgDim)))); el.style.setProperty('--fit', s.customBgFit === 'contain' ? 'contain' : 'cover');
   if (key === bgKey) return; bgKey = key;
   const im = new Image(); im.alt = ''; im.draggable = false; im.decoding = 'async';
@@ -78,7 +78,7 @@ function applyBg() {
 }
 function applyTheme(o = {}) {
   const s = S.settings, r = document.documentElement;
-  r.lang = s.lang;
+  r.lang = s.lang; if (s.lite === true) r.dataset.lite = '1'; else delete r.dataset.lite;   // «экономия ресурсов» (по умолчанию ВЫКЛЮЧЕНА): без размытия, анимаций и погодного декора
   r.style.setProperty('--ac', s.accent); r.style.setProperty('--acx', lum(s.accent) > .5 ? '#08130c' : '#ffffff');
   if ((s.theme === 'glass' || s.theme === 'glasslight') && s.blur != null) r.style.setProperty('--bl', s.blur + 'px'); else r.style.removeProperty('--bl');
   // Палитра применяется контроллером погоды в нужный момент перехода (после «завершения» прошлой темы)
@@ -172,7 +172,6 @@ async function buildModal(id) {
       modal(`<h2>${esc(t('done'))}: ${esc(r.instance.name)} · ${esc(r.instance.mc)}</h2><p class="mu sm">✓ ${r.installed.length}${r.skipped.length ? ` · ✕ ${r.skipped.length}` : ''}</p>
       ${r.skipped.length ? `<div class="card" style="border-color:var(--warn)"><b>⚠ ${esc(t('trimmedT'))}</b><div class="sm mu" style="margin-top:4px">${esc(t('trimmedD').replace('{v}', r.instance.mc))}</div></div>` : ''}
       ${r.skipped.length ? `<label class="lab">${esc(t('buildSkipped'))}</label><div class="chips">${chips(r.skipped)}</div>` : ''}
-      ${(r.alternatives || []).length ? `<label class="lab">${esc(t('buildAlt'))}</label><div class="chips">${chips(r.alternatives)}</div>` : ''}
       ${r.other.length ? `<label class="lab">${esc(t('buildOther'))}</label><div class="chips">${chips(r.other)}</div>` : ''}
       <div class="foot"><button class="btn p" data-opensa="${esc(r.instance.id)}">${ic('play')}${esc(t('open'))}</button></div>`);
     } catch (e) { closeModal(); fail(e); }
@@ -363,7 +362,7 @@ function setNav() {
   const nav = $('#setnav'), view = $('#view'); if (!nav) return;
   const mark = id => nav.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sx === id));
   mark(SETSEC[0][0]);
-  nav.onclick = e => { const b = e.target.closest('[data-sx]'); if (!b) return; const h = document.getElementById(b.dataset.sx); if (!h) return; mark(b.dataset.sx); h.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  nav.onclick = e => { const b = e.target.closest('[data-sx]'); if (!b) return; const h = document.getElementById(b.dataset.sx); if (!h) return; mark(b.dataset.sx); h.scrollIntoView({ behavior: document.documentElement.dataset.lite ? 'auto' : 'smooth', block: 'start' }); };
   let raf = 0;
   const spy = () => { raf = 0; const vt = view.getBoundingClientRect().top + 96; let cur = SETSEC[0][0];
     for (const [id] of SETSEC) { const h = document.getElementById(id); if (h && h.getBoundingClientRect().top <= vt) cur = id; }
@@ -393,6 +392,7 @@ function viewSettings() {
    <div class="setrow"><div class="grow">${esc(t('uiScale'))}</div><input type="range" id="gus" min="80" max="130" step="5" value="${s.uiScale || 100}"><b id="gusv" style="width:48px;text-align:right">${s.uiScale || 100}%</b></div>
    <div class="setrow"><div class="grow">${esc(t('blur'))}</div><input type="range" id="gbl" min="0" max="60" step="2" value="${s.blur == null ? 30 : s.blur}"></div>
    <div class="setrow"><div class="grow">${esc(t('anims'))}</div><button class="sw ${s.anims !== false ? 'on' : ''}" data-tgl="anims"></button></div>
+   <div class="setrow"><div class="grow">${esc(t('lite'))}<small>${esc(t('liteD'))}</small></div><button class="sw ${s.lite === true ? 'on' : ''}" data-tgf="lite"></button></div>
    <div class="setrow"><div class="grow">${esc(t('paneMax'))}<small>${esc(t('paneMaxD'))}</small></div><input type="range" id="gpm" min="0" max="20" step="1" value="${s.paneMax == null ? 14 : s.paneMax}"><b id="gpmv" style="width:28px;text-align:right">${s.paneMax == null ? 14 : s.paneMax}</b></div>
    <div class="setrow"><div class="grow">${esc(t('sortLib'))}</div><select id="gsort">${[['recent', t('sRecent')], ['name', t('sName')], ['playtime', t('sPlay')]].map(([k, n]) => `<option value="${k}" ${(s.sort || 'recent') === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
    <div class="setrow"><div class="grow">${esc(t('defLoader'))}</div><select id="gdl">${LOADERS.map(l => `<option value="${l}" ${(s.defLoader || 'fabric') === l ? 'selected' : ''}>${LN[l]}</option>`).join('')}</select></div>
@@ -1120,7 +1120,7 @@ document.addEventListener('click', async e => {
   if ((b = q('[data-ver]'))) return versionModal(b.dataset.ver);
   if (q('[data-launcher-upd]')) return updateLauncher();
   if ((b = q('[data-fixplay]'))) { closeModal(); return run(async () => { await api('inst:play', b.dataset.fixplay); }); }
-  if ((b = q('[data-tgf]'))) { const k = b.dataset.tgf, v = !S.settings[k]; b.classList.toggle('on', v); return setS({ [k]: v }); }
+  if ((b = q('[data-tgf]'))) { const k = b.dataset.tgf, v = !S.settings[k]; b.classList.toggle('on', v); if (k === 'lite') toast(t('liteRestart'), ''); return setS({ [k]: v }); }
   if (q('[data-clrcache]')) return run(async () => { const n = await api('app:clearCache'); toast(t('cleared') + ' · ' + (n / 1048576).toFixed(0) + ' MB ' + t('freed'), 'ok'); });
   if (q('[data-opendata]')) return api('app:openData');
   if (q('[data-resets]')) { if (confirm(t('resetS') + '?')) return run(async () => { Object.assign(S.settings, await api('settings:reset')); applyTheme({ instant: true }); renderRail(); viewSettings(); }); return; }
@@ -1147,26 +1147,6 @@ addEventListener('error', e => { if (e.target && e.target.tagName === 'IMG') e.t
 const BR_KIND = { resource: 'brResource', behavior: 'brBehavior', skin: 'brSkin' };
 const brIco = (u, e) => u ? `<img class="ico" src="${esc(u)}" alt="">` : `<span class="ico" style="display:grid;place-items:center;font-size:22px;background:var(--card2)">${e}</span>`;
 const brName = id => t(id === 'preview' ? 'brPreview' : 'brRelease');
-// Каталог аддонов Bedrock (CurseForge через сайт). Установка = скачать файл и открыть его игрой, импорт подтверждается в самой игре.
-const BR_CAT = ['addons', 'maps', 'textures', 'scripts', 'skins'];
-function brCatDraw(err) {
-  const C = S.br && S.br.cat, box = $('#brcl'); if (!C || !box) return;
-  if (err) { box.innerHTML = `<div class="card empty">${esc(t('brCatErr'))}<div class="mu sm" style="margin-top:6px">${esc(err)}</div></div>`; return; }
-  box.innerHTML = (C.hits.length ? C.hits.map((h, i) => `<div class="card item">${brIco(h.icon, '🧩')}<div class="grow"><b>${esc(h.title)}</b><div class="ds">${esc(h.desc)}</div><div class="mu sm">⬇ ${fmt(h.downloads)}${h.author ? ' · ' + esc(h.author) : ''}</div></div>${h.url ? `<button class="btn ic sm" data-brcw="${i}" title="${esc(t('brCatSite'))}">${ic('globe')}</button>` : ''}<button class="btn p sm" data-brci="${i}">${ic('download')}${esc(t('install'))}</button></div>`).join('') : `<div class="card empty">${esc(t('brCatNone'))}</div>`)
-    + (C.more ? `<div class="foot" style="justify-content:center;margin-top:12px"><button class="btn" data-brcm>${esc(t('brCatMore'))}</button></div>` : '');
-}
-async function brCatLoad(reset) {
-  const C = S.br && S.br.cat, box = $('#brcl'); if (!C || !box || C.busy) return;
-  const qi = $('#brcq'); if (qi) C.q = qi.value.trim();
-  if (reset) { C.hits = []; C.more = false; box.innerHTML = `<div class="card empty">${esc(t('loading'))}</div>`; }
-  C.busy = true;
-  try {
-    const r = await api('bedrock:catSearch', { query: C.q, type: C.type, offset: C.hits.length });
-    if (S.view !== 'bedrock' || !$('#brcl')) return;
-    C.hits = C.hits.concat(r.hits); C.more = r.more && r.hits.length > 0; C.loaded = true; brCatDraw();
-  } catch (e) { if (S.view === 'bedrock' && $('#brcl')) brCatDraw(errText(e)); }
-  finally { C.busy = false; }
-}
 async function viewBedrock(force) {
   const head_ = `<div class="top"><div><h1>${esc(t('brTitle'))}</h1><div class="mu sm">${esc(t('brSub'))}</div></div></div>`;
   if (S.platform !== 'win32') return V(head_ + `<div class="card empty">${esc(t('brWinOnly'))}</div>`);
@@ -1175,14 +1155,15 @@ async function viewBedrock(force) {
   let info; try { info = await api('bedrock:info', !!force); } catch (e) { return fail(e); }
   if (S.view !== 'bedrock') return;
   const eds = info.editions || [];
-  if (!(eds.find(x => x.id === B.ed) || {}).installed) { const i = eds.find(x => x.installed); if (i) B.ed = i.id; }
+  // Сам выбирает установленное издание только пока пользователь не нажимал кнопки изданий; иначе выбор «Preview» сразу сбрасывался назад
+  if (!B.picked && !(eds.find(x => x.id === B.ed) || {}).installed) { const i = eds.find(x => x.installed); if (i) B.ed = i.id; }
   const e = eds.find(x => x.id === B.ed) || eds[0] || { id: 'release', installed: false };
   const top = `<div class="top"><div><h1>${esc(t('brTitle'))}</h1><div class="mu sm">${esc(t('brSub'))}</div></div>
     <div class="row wrap"><div class="seg">${eds.map(x => `<button data-bred="${x.id}" class="${x.id === e.id ? 'on' : ''}">${esc(brName(x.id))}${x.installed ? '' : ' ·&nbsp;—'}</button>`).join('')}</div>
     <button class="btn ic" data-brscan title="${esc(t('brRescan'))}">${ic('refresh')}</button>
     ${e.installed ? `<button class="btn p" data-brplay>${ic('play')}${esc(t('play'))}</button>` : ''}</div></div>`;
   if (!e.installed) return V(top + `<div class="card empty"><div style="font-size:17px;color:var(--tx);font-weight:700;margin-bottom:6px">${esc(tf('brNotInst', [brName(e.id)]))}</div><div style="margin-bottom:16px">${esc(t('brNotInstD'))}</div><button class="btn p" data-brstore>${ic('download')}${esc(t('brGet'))}</button></div>`);
-  const tabs = [['worlds', t('brWorlds')], ['packs', t('brPacks')], ['catalog', t('brCatalog')], ['servers', t('brServers')]];
+  const tabs = [['worlds', t('brWorlds')], ['packs', t('brPacks')], ['servers', t('brServers')]];
   const bar = `<div class="card" style="margin-bottom:14px"><div class="row wrap"><div class="grow mu sm">${esc(brName(e.id))}${e.version ? ' · ' + esc(e.version) : ''}<br>${esc(t('brLoginNote'))}</div>
     <button class="btn" data-brimport>${ic('import')}${esc(t('brImport'))}</button><button class="btn" data-brfolder>${ic('folder')}${esc(t('openFolder'))}</button></div></div>
     <div class="seg" style="margin-bottom:14px">${tabs.map(([k, n]) => `<button data-brtab="${k}" class="${B.tab === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div><div id="brbody"></div>`;
@@ -1198,12 +1179,6 @@ async function viewBedrock(force) {
       const p = await api('bedrock:packs', e.id); if (S.view !== 'bedrock' || !$('#brbody')) return;
       box.innerHTML = p.length ? p.map((x, i) => `<div class="card item">${brIco(x.icon, '📦')}<div class="grow"><b>${esc(x.name)}</b> <span class="tag">${esc(t(BR_KIND[x.kind]))}</span><div class="mu sm">${esc(x.desc || '')}${x.version ? (x.desc ? ' · ' : '') + 'v' + esc(x.version) : ''} · ${esc(sizeMB(x.size))}</div></div><button class="btn ic sm bad" data-brrm="${i}" title="${esc(t('del'))}">${ic('trash')}</button></div>`).join('') : `<div class="card empty">${esc(t('brNoPacks'))}</div>`;
       S.br.list = p;
-    } else if (B.tab === 'catalog') {
-      const C = B.cat || (B.cat = { type: 'addons', q: '', hits: [], more: false, loaded: false });
-      box.innerHTML = `<div class="card" style="margin-bottom:12px"><div class="row wrap"><input id="brcq" placeholder="${esc(t('search'))}" value="${esc(C.q)}" style="flex:1;min-width:180px" spellcheck="false"><button class="btn p" data-brcs>${ic('search')}${esc(t('search').replace('…', ''))}</button></div>
-        <div class="seg" style="margin-top:10px">${BR_CAT.map(k => `<button data-brctype="${k}" class="${C.type === k ? 'on' : ''}">${esc(t('brCat_' + k))}</button>`).join('')}</div></div><div id="brcl"></div>`;
-      $('#brcq').onkeydown = ev => { if (ev.key === 'Enter') { C.q = ev.target.value.trim(); brCatLoad(true); } };
-      if (C.loaded) brCatDraw(); else brCatLoad(true);
     } else {
       const sv = await api('bedrock:servers'); if (S.view !== 'bedrock' || !$('#brbody')) return;
       S.br.list = sv;
@@ -1216,19 +1191,8 @@ document.addEventListener('click', async ev => {
   const q = s => ev.target.closest(s); let b;
   if (S.view !== 'bedrock') return;
   const B = S.br || (S.br = { ed: 'release', tab: 'worlds' }), re = () => viewBedrock();
-  if ((b = q('[data-bred]'))) { B.ed = b.dataset.bred; return re(); }
+  if ((b = q('[data-bred]'))) { B.ed = b.dataset.bred; B.picked = true; return re(); }
   if ((b = q('[data-brtab]'))) { B.tab = b.dataset.brtab; return re(); }
-  if ((b = q('[data-brctype]'))) { const C = B.cat; if (!C || C.busy) return; C.type = b.dataset.brctype; $$('[data-brctype]').forEach(x => x.classList.toggle('on', x === b)); return brCatLoad(true); }
-  if (q('[data-brcs]')) return brCatLoad(true);
-  if (q('[data-brcm]')) return brCatLoad(false);
-  if ((b = q('[data-brcw]'))) { const h = B.cat.hits[+b.dataset.brcw]; return run(() => api('shell:open', h.url)); }
-  if ((b = q('[data-brci]'))) {
-    const h = B.cat.hits[+b.dataset.brci]; b.disabled = true; const old = b.innerHTML; b.textContent = t('loading');
-    try { const r = await api('bedrock:catInstall', { project: h.id }); toast(tf('brCatSent', [r.files.length]), 'ok'); }
-    catch (e) { if (/brCatNoDl/.test(String(e.message))) { toast(t('brCatNoDl'), 'err'); if (h.url) api('shell:open', h.url).catch(() => {}); } else toast(errText(e), 'err'); }
-    finally { b.disabled = false; b.innerHTML = old; }
-    return;
-  }
   if (q('[data-brscan]')) return viewBedrock(true);
   if (q('[data-brstore]')) return run(() => api('bedrock:store', B.ed));
   if (q('[data-brplay]')) return run(async () => { await api('bedrock:launch', { edition: B.ed }); toast(t('brStarting'), 'ok'); });
