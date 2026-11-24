@@ -1,7 +1,7 @@
 {
   "name": "sa-launcher",
   "productName": "SA Launcher",
-  "version": "1.9.7",
+  "version": "2.1.1",
   "description": "SA Launcher — лаунчер Minecraft со сборками, каталогом Modrinth, вход через Microsoft",
   "author": "Simeon Alyushev",
   "license": "UNLICENSED",
